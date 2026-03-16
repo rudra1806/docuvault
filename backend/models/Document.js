@@ -60,4 +60,8 @@ const documentSchema = new mongoose.Schema({
   },
 });
 
+// Create indexes for better query performance
+documentSchema.index({ userId: 1, uploadDate: -1 }); // For listing user's documents sorted by date
+documentSchema.index({ userId: 1, fileName: 1 }); // For searching by filename
+
 module.exports = mongoose.model("Document", documentSchema);

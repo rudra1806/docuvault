@@ -7,8 +7,8 @@
 
 import axios from "axios";
 
-// Base URL for the backend API
-const API_BASE_URL = "http://localhost:5000/api";
+// Base URL for the backend API - use environment variable or fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // Create an Axios instance with default config
 const api = axios.create({
@@ -17,6 +17,9 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+// Export the base URL for use in other components
+export const getApiBaseUrl = () => API_BASE_URL.replace('/api', '');
 
 // ── Request Interceptor: Attach JWT token ──────────────────
 api.interceptors.request.use(
@@ -59,9 +62,10 @@ export const loginUser = (credentials) => api.post("/auth/login", credentials);
 /**
  * Upload a document – sends FormData (multipart/form-data)
  */
-export const uploadDocument = (formData) =>
+export const uploadDocument = (formData, config = {}) =>
   api.post("/documents/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    ...config,
   });
 
 /**

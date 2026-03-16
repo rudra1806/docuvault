@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
+import { getApiBaseUrl } from "../services/api";
 
 const TEXT_TYPES = ["txt", "csv", "json", "xml", "html", "css", "js", "md"];
 const IMAGE_TYPES = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"];
@@ -10,7 +11,8 @@ const PDF_TYPES = ["pdf"];
 
 const getPreviewSrc = (docId) => {
   const token = localStorage.getItem("token");
-  return `http://localhost:5000/api/documents/preview/${docId}?token=${token}`;
+  const baseUrl = getApiBaseUrl();
+  return `${baseUrl}/api/documents/preview/${docId}?token=${token}`;
 };
 
 function getTypeBadgeColor(type) {
@@ -73,8 +75,9 @@ const FilePreviewModal = ({ document: doc, onClose, onDownload }) => {
       setTextError("");
       try {
         const token = localStorage.getItem("token");
+        const baseUrl = getApiBaseUrl();
         const response = await fetch(
-          `http://localhost:5000/api/documents/preview/${doc._id}`,
+          `${baseUrl}/api/documents/preview/${doc._id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

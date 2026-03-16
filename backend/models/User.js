@@ -45,6 +45,9 @@ const userSchema = new mongoose.Schema({
   },
 });
 
+// Create index on email for faster lookups
+userSchema.index({ email: 1 });
+
 // ── Pre-save Hook: Hash the password before storing ────────
 userSchema.pre("save", async function (next) {
   // Only hash the password if it has been modified (or is new)
