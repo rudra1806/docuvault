@@ -1,9 +1,9 @@
 /* ============================================================
-   index.css — Global Styles & Tailwind Directives
+   index.css — Midnight Vault Design System
    ============================================================ */
 
-/* Import Google Font - Inter (must precede @tailwind directives) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,60 +12,99 @@
 /* ── Base Styles ──────────────────────────────────────────── */
 @layer base {
   body {
-    @apply font-sans bg-gray-50 text-gray-900 antialiased;
+    @apply font-sans bg-surface-500 text-muted-100 antialiased;
+  }
+
+  /* Noise texture overlay on body */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body > #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+
+  ::selection {
+    background: rgba(245, 158, 11, 0.3);
+    color: #fef3c7;
   }
 }
 
 /* ── Component Utilities ──────────────────────────────────── */
 @layer components {
-  /* Primary button */
+  /* Primary button — amber gradient with glow */
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold
-           py-2.5 px-6 rounded-xl transition-all duration-200
-           shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40
-           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-primary-500 to-primary-600
+           hover:from-primary-400 hover:to-primary-500
+           text-surface-500 font-semibold
+           py-2.5 px-6 rounded-lg transition-all duration-300
+           shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40
+           active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   /* Danger/delete button */
   .btn-danger {
-    @apply bg-red-500 hover:bg-red-600 text-white font-semibold
-           py-2 px-4 rounded-xl transition-all duration-200
-           shadow-lg shadow-red-500/25 hover:shadow-red-500/40
-           active:scale-[0.98];
+    @apply bg-red-500/10 border border-red-500/30 hover:bg-red-500/20
+           text-red-400 hover:text-red-300 font-semibold
+           py-2 px-4 rounded-lg transition-all duration-300
+           active:scale-[0.97];
   }
 
   /* Ghost/outline button */
   .btn-ghost {
-    @apply border-2 border-gray-200 hover:border-primary-300
-           text-gray-700 hover:text-primary-600 font-semibold
-           py-2 px-4 rounded-xl transition-all duration-200
-           active:scale-[0.98];
+    @apply border border-muted-500 hover:border-primary-500/50
+           text-muted-200 hover:text-primary-400 font-semibold
+           py-2 px-4 rounded-lg transition-all duration-300
+           active:scale-[0.97];
   }
 
-  /* Text input */
+  /* Text input — dark field with amber focus */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200
-           focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10
-           outline-none transition-all duration-200 bg-white
-           placeholder:text-gray-400;
+    @apply w-full px-4 py-3 rounded-lg
+           bg-surface-200/50 border border-muted-600/50
+           focus:border-primary-500/60 focus:ring-2 focus:ring-primary-500 focus:ring-opacity-[0.15]
+           outline-none transition-all duration-300
+           text-muted-100 placeholder:text-muted-400;
   }
 
-  /* Card */
+  /* Card — dark glass */
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100
-           hover:shadow-md transition-shadow duration-200;
+    @apply bg-white/[0.03] rounded-xl
+           border border-white/[0.06]
+           hover:border-white/[0.1]
+           transition-all duration-300;
   }
 
-  /* Glass morphism card */
+  /* Glass morphism card — stronger blur */
   .glass-card {
-    @apply bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg
-           border border-white/20;
+    @apply bg-white/[0.05] backdrop-blur-2xl rounded-xl
+           border border-white/[0.08]
+           shadow-2xl shadow-black/20;
   }
+
+  /* Stagger animation delays */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
 }
 
-/* ── Custom Scrollbar ──────────────────────────────────────── */
+/* ── Custom Scrollbar (Dark) ──────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -73,10 +112,33 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c7d2fe;
+  background: rgba(245, 158, 11, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a5b4fc;
+  background: rgba(245, 158, 11, 0.35);
+}
+
+/* ── Utility Animations ───────────────────────────────────── */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-300;
+  }
+
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 via-amber-300 to-primary-500;
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(135deg, rgba(245,158,11,0.3), rgba(245,158,11,0)) 1;
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.1), 0 0 60px rgba(245, 158, 11, 0.05);
+  }
+
+  .glow-amber-strong {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.2), 0 0 80px rgba(245, 158, 11, 0.1);
+  }
 }

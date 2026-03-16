@@ -1,8 +1,5 @@
 // ============================================================
-// pages/UploadPage.jsx — Document Upload
-// ============================================================
-// Drag-and-drop or click-to-browse file upload with a
-// progress indicator and success feedback.
+// pages/UploadPage.jsx — Document Upload (Midnight Vault)
 // ============================================================
 
 import { useState, useRef } from "react";
@@ -10,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 import { uploadDocument } from "../services/api";
 import Navbar from "../components/Navbar";
 
-// Allowed file types
 const ALLOWED_TYPES = [
   "application/pdf",
   "application/msword",
@@ -32,7 +28,33 @@ const ALLOWED_TYPES = [
   "text/xml",
 ];
 
-const ALLOWED_EXTENSIONS = ["PDF", "DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX", "JPG", "PNG", "GIF", "TXT", "CSV", "ZIP", "RAR", "JSON"];
+const FILE_CATEGORIES = [
+  { 
+    label: 'Documents', 
+    exts: ['PDF', 'DOC', 'DOCX', 'TXT'],
+    color: 'text-red-400 bg-red-500/10 border-red-500/20',
+  },
+  { 
+    label: 'Spreadsheets', 
+    exts: ['XLS', 'XLSX', 'CSV'],
+    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  },
+  { 
+    label: 'Presentations', 
+    exts: ['PPT', 'PPTX'],
+    color: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  },
+  { 
+    label: 'Images', 
+    exts: ['JPG', 'PNG', 'GIF'],
+    color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+  },
+  { 
+    label: 'Data', 
+    exts: ['JSON', 'ZIP', 'RAR'],
+    color: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+  },
+];
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -44,18 +66,15 @@ const UploadPage = () => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  // Handle file selection (from input or drop)
   const handleFileSelect = (selectedFile) => {
     setError("");
     setSuccess(false);
 
-    // Validate file type
     if (!ALLOWED_TYPES.includes(selectedFile.type)) {
-      setError(`Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`);
+      setError("Unsupported file format. Please check the accepted types below.");
       return;
     }
 
-    // Validate file size (10 MB)
     if (selectedFile.size > 10 * 1024 * 1024) {
       setError("File size must be less than 10 MB");
       return;
@@ -64,7 +83,6 @@ const UploadPage = () => {
     setFile(selectedFile);
   };
 
-  // Drag-and-drop handlers
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -80,7 +98,6 @@ const UploadPage = () => {
     }
   };
 
-  // Upload the file
   const handleUpload = async () => {
     if (!file) return;
 
@@ -92,7 +109,6 @@ const UploadPage = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Simulate upload progress (Axios onUploadProgress)
       await uploadDocument(formData, {
         onUploadProgress: (event) => {
           const percent = Math.round((event.loaded * 100) / event.total);
@@ -103,8 +119,6 @@ const UploadPage = () => {
       setProgress(100);
       setSuccess(true);
       setFile(null);
-
-      // Navigate to documents page after a brief delay
       setTimeout(() => navigate("/documents"), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Upload failed. Please try again.");
@@ -113,33 +127,42 @@ const UploadPage = () => {
     }
   };
 
-  // Format file size
   const formatSize = (bytes) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
+  const getFileExt = (name) => name?.split('.').pop()?.toUpperCase() || 'FILE';
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-500">
       <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Upload Document</h1>
+        <div className="opacity-0 animate-fade-up">
+          <h1 className="text-2xl font-display font-bold text-white mb-2">Upload Document</h1>
+          <p className="text-muted-400 mb-6">Drag & drop or click to add a file to your vault</p>
+        </div>
 
         {/* ── Success Message ────────────────────────────── */}
         {success && (
-          <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-100 text-green-700 text-sm font-medium flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium flex items-center gap-3 opacity-0 animate-scale-in">
+            <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
             Document uploaded successfully! Redirecting...
           </div>
         )}
 
         {/* ── Error Message ──────────────────────────────── */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium">
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium flex items-center gap-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
             {error}
           </div>
         )}
@@ -147,12 +170,12 @@ const UploadPage = () => {
         {/* ── Drop Zone ──────────────────────────────────── */}
         <div
           id="drop-zone"
-          className={`card p-8 border-2 border-dashed cursor-pointer transition-all duration-200 ${
+          className={`relative rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-300 overflow-hidden opacity-0 animate-fade-up stagger-1 ${
             dragActive
-              ? "border-primary-500 bg-primary-50"
+              ? "border-primary-500/60 bg-primary-500/5"
               : file
-              ? "border-green-300 bg-green-50/50"
-              : "border-gray-200 hover:border-primary-300 hover:bg-primary-50/30"
+              ? "border-emerald-500/30 bg-emerald-500/5"
+              : "border-muted-500/30 hover:border-primary-500/30 hover:bg-primary-500/[0.02]"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -160,6 +183,11 @@ const UploadPage = () => {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
         >
+          {/* Drag active glow */}
+          {dragActive && (
+            <div className="absolute inset-0 animate-glow-pulse pointer-events-none" />
+          )}
+
           <input
             ref={fileInputRef}
             id="file-input"
@@ -169,59 +197,63 @@ const UploadPage = () => {
             onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
           />
 
-          <div className="text-center">
+          <div className="text-center p-10 sm:p-12">
             {file ? (
-              // ── Selected file preview ──────────────────
               <>
-                <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+                  <span className="text-emerald-400 font-display font-bold text-sm">{getFileExt(file.name)}</span>
                 </div>
-                <p className="text-sm font-semibold text-gray-800">{file.name}</p>
-                <p className="text-xs text-gray-500 mt-1">{formatSize(file.size)}</p>
-                <p className="text-xs text-primary-500 mt-2">Click to change file</p>
+                <p className="text-sm font-semibold text-white">{file.name}</p>
+                <p className="text-xs text-muted-400 mt-1">{formatSize(file.size)}</p>
+                <p className="text-xs text-primary-400 mt-3 hover:text-primary-300 transition-colors">Click to change file</p>
               </>
             ) : (
-              // ── Drop zone placeholder ──────────────────
               <>
-                <div className="w-16 h-16 bg-primary-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                <div className="w-16 h-16 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary-500/20">
+                  <svg className="w-7 h-7 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
                 </div>
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-sm font-semibold text-muted-200">
                   Drag & drop your file here
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  or click to browse
+                <p className="text-xs text-muted-400 mt-1">
+                  or click to browse • Max 10 MB
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                  {ALLOWED_EXTENSIONS.map((ext) => (
-                    <span
-                      key={ext}
-                      className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium"
-                    >
-                      .{ext}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400 mt-2">Max file size: 10 MB</p>
               </>
             )}
           </div>
         </div>
 
+        {/* ── File Type Categories ─────────────────────────── */}
+        {!file && (
+          <div className="mt-6 space-y-3 opacity-0 animate-fade-up stagger-2">
+            <p className="text-xs font-medium text-muted-400 uppercase tracking-wider">Accepted formats</p>
+            <div className="flex flex-wrap gap-2">
+              {FILE_CATEGORIES.map((cat) => (
+                <div key={cat.label} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${cat.color}`}>
+                  {cat.label}: {cat.exts.join(', ')}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Upload Progress ────────────────────────────── */}
         {uploading && (
-          <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-primary-500 to-primary-600 h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
+          <div className="mt-6 opacity-0 animate-fade-up">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-300">Uploading...</span>
+              <span className="text-xs font-bold text-primary-400">{progress}%</span>
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">{progress}% uploaded</p>
+            <div className="w-full bg-surface-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-primary-500 to-primary-400 h-2 rounded-full transition-all duration-300 relative"
+                style={{ width: `${progress}%` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+              </div>
+            </div>
           </div>
         )}
 
@@ -230,12 +262,12 @@ const UploadPage = () => {
           <button
             id="upload-submit"
             onClick={handleUpload}
-            className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
+            className="btn-primary w-full mt-6 flex items-center justify-center gap-2 opacity-0 animate-fade-up"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            Upload Document
+            Upload to Vault
           </button>
         )}
       </main>

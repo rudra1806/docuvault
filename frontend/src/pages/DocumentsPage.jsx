@@ -1,10 +1,9 @@
 // ============================================================
-// pages/DocumentsPage.jsx — Document List with Search
-// ============================================================
-// Displays all documents in a searchable, sortable list.
+// pages/DocumentsPage.jsx — Document List (Midnight Vault)
 // ============================================================
 
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { getDocuments, downloadDocument, deleteDocument } from "../services/api";
 import Navbar from "../components/Navbar";
 import FileCard from "../components/FileCard";
@@ -17,7 +16,6 @@ const DocumentsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [previewDoc, setPreviewDoc] = useState(null);
 
-  // Fetch documents on mount and when searchTerm changes
   useEffect(() => {
     fetchDocuments(searchTerm);
   }, [searchTerm]);
@@ -34,26 +32,20 @@ const DocumentsPage = () => {
     }
   };
 
-  // Memoized search handler (used by SearchBar's debounce)
   const handleSearch = useCallback((query) => {
     setSearchTerm(query);
   }, []);
 
-  // Handle document download
   const handleDownload = async (id, fileName) => {
     try {
       const response = await downloadDocument(id);
-
-      // The backend now returns the file as a blob directly
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", fileName); // Force download with original name
+      link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
-
-      // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
     } catch (error) {
@@ -62,11 +54,9 @@ const DocumentsPage = () => {
     }
   };
 
-  // Handle document deletion
   const handleDelete = async (id) => {
     try {
       await deleteDocument(id);
-      // Remove the deleted document from local state
       setDocuments((prev) => prev.filter((doc) => doc._id !== id));
     } catch (error) {
       console.error("Delete error:", error);
@@ -74,66 +64,85 @@ const DocumentsPage = () => {
     }
   };
 
-  // Handle preview open
   const handlePreview = (doc) => {
     setPreviewDoc(doc);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-500">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ── Header ─────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 opacity-0 animate-fade-up">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Documents</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {documents.length} document{documents.length !== 1 ? "s" : ""} found
+            <h1 className="text-2xl font-display font-bold text-white">My Documents</h1>
+            <p className="text-sm text-muted-400 mt-1">
+              {documents.length} document{documents.length !== 1 ? "s" : ""} in your vault
             </p>
           </div>
+          <Link to="/upload" className="btn-primary inline-flex items-center gap-2 self-start">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Upload
+          </Link>
         </div>
 
         {/* ── Search Bar ─────────────────────────────────── */}
-        <div className="mb-6">
+        <div className="mb-6 opacity-0 animate-fade-up stagger-1">
           <SearchBar onSearch={handleSearch} placeholder="Search by filename..." />
         </div>
 
         {/* ── Document List ──────────────────────────────── */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-500 border-t-transparent"></div>
+            <div className="w-10 h-10 rounded-full border-2 border-primary-500/30 border-t-primary-500 animate-spin" />
           </div>
         ) : documents.length === 0 ? (
-          <div className="card p-12 text-center">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-600 mb-1">
+          <div className="card p-12 text-center opacity-0 animate-scale-in">
+            <div className="w-16 h-16 bg-muted-600/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-muted-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {searchTerm ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                )}
+              </svg>
+            </div>
+            <h3 className="text-lg font-display font-semibold text-muted-200 mb-1">
               {searchTerm ? "No matching documents" : "No documents yet"}
             </h3>
-            <p className="text-gray-400">
+            <p className="text-muted-400 text-sm">
               {searchTerm
-                ? `No documents match "${searchTerm}". Try a different search.`
+                ? `Nothing matches "${searchTerm}". Try a different search.`
                 : "Upload your first document to see it here."}
             </p>
+            {!searchTerm && (
+              <Link to="/upload" className="btn-primary inline-flex items-center gap-2 mt-6">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload Document
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {documents.map((doc) => (
-              <FileCard
-                key={doc._id}
-                document={doc}
-                onDownload={handleDownload}
-                onDelete={handleDelete}
-                onPreview={handlePreview}
-              />
+            {documents.map((doc, i) => (
+              <div key={doc._id} className={`opacity-0 animate-fade-up`} style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
+                <FileCard
+                  document={doc}
+                  onDownload={handleDownload}
+                  onDelete={handleDelete}
+                  onPreview={handlePreview}
+                />
+              </div>
             ))}
           </div>
         )}
       </main>
 
-      {/* ── Preview Modal ──────────────────────────────── */}
       {previewDoc && (
         <FilePreviewModal
           document={previewDoc}
