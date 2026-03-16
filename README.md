@@ -1,62 +1,157 @@
-# DocuVault (DocuVault)
+<p align="center">
+  <img src="https://img.shields.io/badge/DocuVault-Cloud%20DMS-6366f1?style=for-the-badge&logo=files&logoColor=white" alt="DocuVault" />
+</p>
 
-A full-stack web application that allows users to **upload, store, manage, organize, and access documents securely** using Cloudinary cloud storage. Built with React, Node.js, Express, and MongoDB.
+<h1 align="center">📄 DocuVault</h1>
+
+<p align="center">
+  <strong>A secure, cloud-based Document Management System</strong><br/>
+  Upload · Preview · Download · Manage — all from your browser.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Cloudinary-Storage-3448C5?style=flat-square&logo=cloudinary&logoColor=white" />
+  <img src="https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white" />
+</p>
 
 ---
 
-## 🏗️ System Architecture
+## 🌟 Overview
+
+**DocuVault** is a full-stack web application that lets users securely upload, store, preview, and download documents in the cloud. Files are stored on **Cloudinary** with metadata in **MongoDB**, and the entire system is protected by **JWT-based authentication**.
+
+Whether it's PDFs, images, spreadsheets, or text files — upload it once, access it anywhere.
+
+---
+
+## ✨ Features
+
+### 🔐 Authentication & Security
+- **User registration & login** with secure JWT token-based authentication
+- **Password encryption** using bcrypt (10 salt rounds)
+- **Protected routes** — only authenticated users can access their documents
+- **Per-user isolation** — users can only view, download, and delete their own files
+
+### 📤 File Upload
+- **Drag & drop** or click-to-browse file upload
+- **Real-time upload progress** indicator
+- **Client + server-side validation** for file type and size
+- **15+ supported file types**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, TXT, CSV, ZIP, RAR, JSON, XML, and more
+- **10 MB max** file size per upload
+
+### 👁️ File Preview
+- **In-app preview modal** — view files without downloading
+- **Image preview** (JPG, PNG, GIF, WebP) — rendered inline
+- **PDF preview** — displayed using the browser's built-in PDF viewer
+- **Text & code preview** (TXT, CSV, JSON, XML, JS, CSS, HTML) — rendered in a dark-themed code block
+- **Unsupported types** show a clear fallback with a download button
+- **Keyboard shortcut** — press `Esc` to close the preview
+
+### 📥 File Download
+- **Byte-perfect downloads** — files are proxied through the backend, preserving the exact original content
+- **Correct MIME types** and `Content-Disposition` headers for every file format
+- **No CORS issues** — the backend streams the file, so the browser never contacts Cloudinary directly
+
+### 🗂️ Document Management
+- **Dashboard** with welcome banner, document count stats, and recent files
+- **Documents page** with full list of all uploaded files
+- **Real-time search** by filename with debounced input
+- **One-click delete** with confirmation dialog — removes from both Cloudinary and MongoDB
+
+### 🎨 UI/UX
+- **Modern, responsive design** built with Tailwind CSS
+- **Inter font** from Google Fonts for clean typography
+- **Glassmorphism cards**, gradient banners, and smooth animations
+- **Custom scrollbar** styling
+- **Mobile-friendly** — works on all screen sizes
+
+---
+
+## 🏗️ Architecture
 
 ```
-User → Frontend (React/Vite) → Backend (Node/Express) → MongoDB + Cloudinary
+┌─────────────────┐     HTTP/REST      ┌─────────────────────┐     Cloud Storage     ┌──────────────┐
+│                 │  ←──────────────→   │                     │  ←────────────────→   │              │
+│   React (Vite)  │                    │  Node.js / Express  │                      │  Cloudinary  │
+│   Frontend      │                    │  Backend API        │                      │  (Files)     │
+│                 │                    │                     │                      │              │
+└─────────────────┘                    └─────────┬───────────┘                      └──────────────┘
+                                                 │
+                                                 │  Mongoose ODM
+                                                 ▼
+                                       ┌─────────────────────┐
+                                       │                     │
+                                       │   MongoDB Atlas     │
+                                       │   (Metadata)        │
+                                       │                     │
+                                       └─────────────────────┘
 ```
 
-Three-tier architecture: **Presentation → Application → Data**
+**Three-tier architecture**: Presentation → Application → Data
+
+---
+
+## ⚙️ Tech Stack
+
+| Layer           | Technology                                  |
+| --------------- | ------------------------------------------- |
+| **Frontend**    | React 19, Vite 8, Tailwind CSS 3            |
+| **Backend**     | Node.js, Express.js                         |
+| **Database**    | MongoDB Atlas (Mongoose ODM)                |
+| **Cloud Storage** | Cloudinary (image + raw resource types)   |
+| **Authentication** | JWT (JSON Web Tokens) + bcrypt           |
+| **HTTP Client** | Axios (with interceptors)                   |
+| **File Upload** | Multer + multer-storage-cloudinary          |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-root/
+DocuVault/
 ├── backend/
 │   ├── config/
-│   │   ├── db.js              # MongoDB connection
-│   │   └── cloudinary.js      # Cloudinary + Multer config
+│   │   ├── db.js                  # MongoDB connection setup
+│   │   └── cloudinary.js          # Cloudinary SDK + Multer storage config
 │   ├── controllers/
-│   │   ├── authController.js  # Register & Login logic
-│   │   └── documentController.js  # CRUD document logic
+│   │   ├── authController.js      # Register & Login handlers
+│   │   └── documentController.js  # Upload, List, Download, Preview, Delete
 │   ├── middleware/
-│   │   └── auth.js            # JWT verification middleware
+│   │   └── auth.js                # JWT verification (header + query param)
 │   ├── models/
-│   │   ├── User.js            # User schema (bcrypt hashing)
-│   │   └── Document.js        # Document metadata schema
+│   │   ├── User.js                # User schema with bcrypt pre-save hook
+│   │   └── Document.js            # Document metadata schema
 │   ├── routes/
-│   │   ├── authRoutes.js      # /api/auth/*
-│   │   └── documentRoutes.js  # /api/documents/*
-│   ├── server.js              # Express entry point
-│   ├── .env.example           # Environment variable template
+│   │   ├── authRoutes.js          # POST /api/auth/*
+│   │   └── documentRoutes.js      # GET/POST/DELETE /api/documents/*
+│   ├── server.js                  # Express entry point
+│   ├── .env.example               # Environment variable template
 │   └── package.json
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Navbar.jsx
-│   │   │   ├── FileCard.jsx
-│   │   │   ├── SearchBar.jsx
-│   │   │   └── ProtectedRoute.jsx
+│   │   │   ├── Navbar.jsx            # Top navigation bar
+│   │   │   ├── FileCard.jsx          # Document card with preview/download/delete
+│   │   │   ├── FilePreviewModal.jsx  # Full-screen file preview overlay
+│   │   │   ├── SearchBar.jsx         # Debounced search input
+│   │   │   └── ProtectedRoute.jsx    # Auth guard for routes
 │   │   ├── context/
-│   │   │   └── AuthContext.jsx  # React auth context
+│   │   │   └── AuthContext.jsx       # React context for auth state
 │   │   ├── pages/
-│   │   │   ├── LoginPage.jsx
-│   │   │   ├── RegisterPage.jsx
-│   │   │   ├── DashboardPage.jsx
-│   │   │   ├── UploadPage.jsx
-│   │   │   └── DocumentsPage.jsx
+│   │   │   ├── LoginPage.jsx         # Sign in page
+│   │   │   ├── RegisterPage.jsx      # Create account page
+│   │   │   ├── DashboardPage.jsx     # Welcome banner + stats + recent docs
+│   │   │   ├── UploadPage.jsx        # Drag & drop file upload
+│   │   │   └── DocumentsPage.jsx     # Searchable document list
 │   │   ├── services/
-│   │   │   └── api.js           # Axios instance + API functions
-│   │   ├── App.jsx              # Routing setup
-│   │   ├── main.jsx             # React entry point
-│   │   └── index.css            # Tailwind + global styles
+│   │   │   └── api.js                # Axios instance + all API functions
+│   │   ├── App.jsx                   # React Router setup
+│   │   ├── main.jsx                  # React entry point
+│   │   └── index.css                 # Tailwind directives + global styles
 │   ├── index.html
 │   ├── tailwind.config.js
 │   ├── vite.config.js
@@ -67,84 +162,76 @@ root/
 
 ---
 
-## ⚙️ Tech Stack
-
-| Layer         | Technology                         |
-| ------------- | ---------------------------------- |
-| Frontend      | React 19, Vite, Tailwind CSS 3     |
-| Backend       | Node.js, Express.js                |
-| Database      | MongoDB (Mongoose ODM)             |
-| Cloud Storage | Cloudinary                         |
-| Auth          | JWT + bcrypt                       |
-| HTTP Client   | Axios                              |
-
----
-
-## 🔌 API Endpoints
+## 🔌 API Reference
 
 ### Authentication
 
-| Method | Endpoint             | Description         |
-| ------ | -------------------- | ------------------- |
-| POST   | `/api/auth/register` | Create new account  |
-| POST   | `/api/auth/login`    | Login & receive JWT |
+| Method | Endpoint             | Body                              | Description              |
+| ------ | -------------------- | --------------------------------- | ------------------------ |
+| POST   | `/api/auth/register` | `{ name, email, password }`       | Create a new account     |
+| POST   | `/api/auth/login`    | `{ email, password }`             | Login & receive JWT      |
 
-### Documents (Protected — requires `Authorization: Bearer <token>`)
+### Documents <sub>(all routes require `Authorization: Bearer <token>`)</sub>
 
-| Method | Endpoint                       | Description                    |
-| ------ | ------------------------------ | ------------------------------ |
-| POST   | `/api/documents/upload`        | Upload a document              |
-| GET    | `/api/documents?search=`       | List documents (with search)   |
-| GET    | `/api/documents/download/:id`  | Get download URL               |
-| DELETE | `/api/documents/:id`           | Delete a document              |
-
----
-
-## 🗃️ Database Design
-
-### User Collection
-| Field     | Type   | Notes          |
-| --------- | ------ | -------------- |
-| name      | String | Required       |
-| email     | String | Unique, indexed|
-| password  | String | Bcrypt hashed  |
-| createdAt | Date   | Auto-generated |
-
-### Document Collection
-| Field        | Type     | Notes                    |
-| ------------ | -------- | ------------------------ |
-| fileName     | String   | Original file name       |
-| fileURL      | String   | Cloudinary URL           |
-| fileType     | String   | Extension (pdf, jpg, etc)|
-| fileSize     | Number   | Bytes                    |
-| cloudinaryId | String   | For deletion             |
-| userId       | ObjectId | Reference to User        |
-| uploadDate   | Date     | Auto-generated           |
+| Method | Endpoint                       | Description                                  |
+| ------ | ------------------------------ | -------------------------------------------- |
+| POST   | `/api/documents/upload`        | Upload a file (multipart/form-data)          |
+| GET    | `/api/documents?search=`       | List all documents (optional search filter)  |
+| GET    | `/api/documents/download/:id`  | Download a file (streams bytes as attachment) |
+| GET    | `/api/documents/preview/:id`   | Preview a file (streams bytes inline)        |
+| DELETE | `/api/documents/:id`           | Delete from Cloudinary + MongoDB             |
 
 ---
 
-## 🚀 Setup & Installation
+## 🗃️ Database Schema
+
+### `users` Collection
+
+| Field       | Type     | Constraints             |
+| ----------- | -------- | ----------------------- |
+| `name`      | String   | Required                |
+| `email`     | String   | Required, unique        |
+| `password`  | String   | Required, bcrypt hashed |
+| `createdAt` | Date     | Auto-generated          |
+
+### `documents` Collection
+
+| Field          | Type     | Description                            |
+| -------------- | -------- | -------------------------------------- |
+| `fileName`     | String   | Original uploaded file name            |
+| `fileURL`      | String   | Cloudinary storage URL                 |
+| `fileType`     | String   | File extension (e.g., `pdf`, `jpg`)    |
+| `fileSize`     | Number   | Size in bytes                          |
+| `cloudinaryId` | String   | Cloudinary public_id (used for delete) |
+| `resourceType` | String   | `"image"` or `"raw"` (Cloudinary type) |
+| `userId`       | ObjectId | Reference to the uploading user        |
+| `uploadDate`   | Date     | Auto-generated timestamp               |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** v18+ and **npm**
-- **MongoDB Atlas** account (free tier works)
-- **Cloudinary** account (free tier works)
 
-### 1. Clone the repository
+| Requirement     | Notes                                                    |
+| --------------- | -------------------------------------------------------- |
+| **Node.js**     | v18 or higher ([download](https://nodejs.org))           |
+| **npm**         | Comes with Node.js                                       |
+| **MongoDB Atlas** | Free tier is sufficient ([signup](https://www.mongodb.com/atlas)) |
+| **Cloudinary**  | Free tier is sufficient ([signup](https://cloudinary.com)) |
+
+### 1️⃣ Clone the Repository
+
 ```bash
 git clone <your-repo-url>
-cd innovative
+cd DocuVault
 ```
 
-### 2. Backend Setup
+### 2️⃣ Backend Setup
 
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Create environment file
 cp .env.example .env
 ```
 
@@ -152,82 +239,115 @@ Edit `backend/.env` with your credentials:
 
 ```env
 PORT=5000
-MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/cloud-dms
+
+# MongoDB — get from Atlas dashboard → Connect → Drivers
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/docuvault?retryWrites=true&w=majority
+
+# JWT — use any strong random string
 JWT_SECRET=your_super_secret_key_here
 JWT_EXPIRE=7d
+
+# Cloudinary — get from Cloudinary dashboard
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-**Getting Cloudinary credentials:**
+<details>
+<summary><strong>📋 How to get your credentials</strong></summary>
+
+#### Cloudinary
 1. Sign up at [cloudinary.com](https://cloudinary.com)
-2. Go to **Dashboard** → copy Cloud Name, API Key, API Secret
+2. Go to **Settings** → **API Keys**
+3. Copy your **Cloud Name**, **API Key**, and **API Secret**
 
-**Getting MongoDB URI:**
+#### MongoDB Atlas
 1. Sign up at [mongodb.com/atlas](https://www.mongodb.com/atlas)
-2. Create a free cluster → click **Connect** → **Connect your application**
-3. Copy the connection string and replace `<password>` with your DB password
+2. Create a **free M0 cluster**
+3. Click **Connect** → **Drivers** → copy the connection string
+4. Replace `<password>` with your database user's password
+5. Under **Network Access**, add `0.0.0.0/0` to allow connections from anywhere (for development)
 
-Start the backend:
+</details>
+
+Start the backend server:
+
 ```bash
 npm run dev
 ```
-The server will start on `http://localhost:5000`.
 
-### 3. Frontend Setup
+> The API will be running at `http://localhost:5000`
+
+### 3️⃣ Frontend Setup
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
-The frontend will start on `http://localhost:5173`.
 
----
-
-## 📋 Features
-
-- ✅ **User Registration & Login** with JWT authentication
-- ✅ **Password Encryption** using bcrypt
-- ✅ **Document Upload** (PDF, DOC, DOCX, JPG, PNG, TXT)
-- ✅ **Cloud Storage** via Cloudinary
-- ✅ **View Documents** in a clean, organized list
-- ✅ **Download Documents** directly from the cloud
-- ✅ **Delete Documents** from cloud storage + database
-- ✅ **Search Documents** by filename
-- ✅ **Drag & Drop Upload** with progress indicator
-- ✅ **Protected Routes** — only authenticated users can access documents
-- ✅ **Responsive Design** — works on desktop and mobile
+> The app will open at `http://localhost:5173`
 
 ---
 
 ## 🖼️ Pages
 
-| Page       | URL          | Description                      |
-| ---------- | ------------ | -------------------------------- |
-| Login      | `/login`     | Sign in with email & password    |
-| Register   | `/register`  | Create a new account             |
-| Dashboard  | `/dashboard` | Welcome banner, stats, recents   |
-| Upload     | `/upload`    | Drag & drop file upload          |
-| Documents  | `/documents` | Search and manage all documents  |
+| Page           | Route        | Description                                           |
+| -------------- | ------------ | ----------------------------------------------------- |
+| **Login**      | `/login`     | Sign in with email & password                         |
+| **Register**   | `/register`  | Create a new account with name, email & password      |
+| **Dashboard**  | `/dashboard` | Welcome banner, document stats, quick actions, recent files |
+| **Upload**     | `/upload`    | Drag & drop or file browser with progress bar         |
+| **Documents**  | `/documents` | Full document list with search, preview, download, delete |
 
 ---
 
 ## 🛡️ Security
 
-- Passwords are hashed with **bcrypt** (10 salt rounds)
-- Routes are protected with **JWT** middleware
-- File type validation on both client and server
-- File size limit: **10 MB**
-- Users can only access/delete their own documents
+| Feature                    | Implementation                                              |
+| -------------------------- | ----------------------------------------------------------- |
+| Password hashing           | bcrypt with 10 salt rounds                                  |
+| Route protection           | JWT middleware on all document routes                        |
+| Token delivery             | `Authorization: Bearer <token>` header + query param fallback |
+| File type validation       | Client-side (MIME type) + server-side (Cloudinary config)   |
+| File size limit            | 10 MB max per upload                                        |
+| User isolation             | All queries filter by `userId` — users only see their own files |
+| Download security          | Files proxied through backend — Cloudinary URLs never exposed to client |
 
 ---
 
-## 📜 License
+## 📂 Supported File Types
 
-This project is for educational purposes.
+| Category     | Extensions                          |
+| ------------ | ----------------------------------- |
+| Documents    | PDF, DOC, DOCX                      |
+| Spreadsheets | XLS, XLSX, CSV                      |
+| Presentations | PPT, PPTX                          |
+| Images       | JPG, JPEG, PNG, GIF, WebP           |
+| Text & Code  | TXT, JSON, XML, HTML, CSS, JS       |
+| Archives     | ZIP, RAR                            |
+
+---
+
+## 🧪 Running in Production
+
+```bash
+# Build the frontend
+cd frontend
+npm run build
+
+# The optimized output is in frontend/dist/
+# Serve it with any static file server or deploy to Vercel/Netlify
+
+# Start the backend
+cd backend
+npm start
+```
+
+---
+
+<div align="center">
+
+**Built by [Rudra Sanandiya](https://github.com/rudra1806)**
+
+</div>
