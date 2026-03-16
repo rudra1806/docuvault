@@ -9,11 +9,13 @@ import { getDocuments, downloadDocument, deleteDocument } from "../services/api"
 import Navbar from "../components/Navbar";
 import FileCard from "../components/FileCard";
 import SearchBar from "../components/SearchBar";
+import FilePreviewModal from "../components/FilePreviewModal";
 
 const DocumentsPage = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   // Fetch documents on mount and when searchTerm changes
   useEffect(() => {
@@ -72,6 +74,11 @@ const DocumentsPage = () => {
     }
   };
 
+  // Handle preview open
+  const handlePreview = (doc) => {
+    setPreviewDoc(doc);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -119,11 +126,21 @@ const DocumentsPage = () => {
                 document={doc}
                 onDownload={handleDownload}
                 onDelete={handleDelete}
+                onPreview={handlePreview}
               />
             ))}
           </div>
         )}
       </main>
+
+      {/* ── Preview Modal ──────────────────────────────── */}
+      {previewDoc && (
+        <FilePreviewModal
+          document={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          onDownload={handleDownload}
+        />
+      )}
     </div>
   );
 };

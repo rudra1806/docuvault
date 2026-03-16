@@ -1,7 +1,7 @@
 // ============================================================
 // components/FileCard.jsx — Document Card Component
 // ============================================================
-// Displays a single document with info, download, and delete.
+// Displays a single document with info, preview, download, and delete.
 // ============================================================
 
 import { useState } from "react";
@@ -21,9 +21,24 @@ const getFileIcon = (fileType) => {
     case "jpg":
     case "jpeg":
     case "png":
+    case "gif":
+    case "webp":
       return { color: "text-green-500 bg-green-50", label: "IMG" };
     case "txt":
       return { color: "text-gray-500 bg-gray-100", label: "TXT" };
+    case "json":
+    case "xml":
+    case "csv":
+      return { color: "text-amber-500 bg-amber-50", label: type.toUpperCase() };
+    case "xls":
+    case "xlsx":
+      return { color: "text-emerald-600 bg-emerald-50", label: "XLS" };
+    case "ppt":
+    case "pptx":
+      return { color: "text-orange-500 bg-orange-50", label: "PPT" };
+    case "zip":
+    case "rar":
+      return { color: "text-yellow-600 bg-yellow-50", label: "ZIP" };
     default:
       return { color: "text-purple-500 bg-purple-50", label: "FILE" };
   }
@@ -43,7 +58,7 @@ const formatDate = (dateString) => {
   });
 };
 
-const FileCard = ({ document, onDownload, onDelete }) => {
+const FileCard = ({ document, onDownload, onDelete, onPreview }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { color, label } = getFileIcon(document.fileType);
 
@@ -56,7 +71,10 @@ const FileCard = ({ document, onDownload, onDelete }) => {
   };
 
   return (
-    <div className="card p-5 flex items-center gap-4 group">
+    <div
+      className="card p-5 flex items-center gap-4 group cursor-pointer"
+      onClick={() => onPreview(document)}
+    >
       {/* ── File Type Badge ──────────────────────────────── */}
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm ${color}`}>
         {label}
@@ -74,9 +92,27 @@ const FileCard = ({ document, onDownload, onDelete }) => {
 
       {/* ── Actions ──────────────────────────────────────── */}
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        {/* Preview Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPreview(document);
+          }}
+          className="p-2 rounded-lg text-indigo-500 hover:bg-indigo-50 transition-colors"
+          title="Preview"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        </button>
+
         {/* Download Button */}
         <button
-          onClick={() => onDownload(document._id, document.fileName)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload(document._id, document.fileName);
+          }}
           className="p-2 rounded-lg text-primary-500 hover:bg-primary-50 transition-colors"
           title="Download"
         >
@@ -87,7 +123,10 @@ const FileCard = ({ document, onDownload, onDelete }) => {
 
         {/* Delete Button */}
         <button
-          onClick={handleDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
           disabled={isDeleting}
           className="p-2 rounded-lg text-red-400 hover:bg-red-50 transition-colors disabled:opacity-50"
           title="Delete"

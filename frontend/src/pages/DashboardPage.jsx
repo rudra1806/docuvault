@@ -11,12 +11,14 @@ import { useAuth } from "../context/AuthContext";
 import { getDocuments, downloadDocument, deleteDocument } from "../services/api";
 import Navbar from "../components/Navbar";
 import FileCard from "../components/FileCard";
+import FilePreviewModal from "../components/FilePreviewModal";
 
 const DashboardPage = () => {
   const { user } = useAuth();
   const [recentDocs, setRecentDocs] = useState([]);
   const [totalDocs, setTotalDocs] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   // Fetch recent documents on mount
   useEffect(() => {
@@ -40,19 +42,16 @@ const DashboardPage = () => {
   const handleDownload = async (id, fileName) => {
     try {
       const response = await downloadDocument(id);
-      
-      // Fetch the actual file data as a blob
-      const fileResponse = await fetch(response.data.fileURL);
-      const blob = await fileResponse.blob();
-      
-      // Forcing the browser to download the file instead of opening it
+
+      // The backend returns the file as a blob directly
+      const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", fileName); // Force download
+      link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
-      
+
       // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
@@ -60,6 +59,11 @@ const DashboardPage = () => {
       console.error("Download error:", error);
       alert("Failed to download the document.");
     }
+  };
+
+  // Handle preview
+  const handlePreview = (doc) => {
+    setPreviewDoc(doc);
   };
 
   // Handle document deletion
@@ -170,12 +174,22 @@ const DashboardPage = () => {
                   document={doc}
                   onDownload={handleDownload}
                   onDelete={handleDelete}
+                  onPreview={handlePreview}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {/* ── Preview Modal ──────────────────────────────── */}
+      {previewDoc && (
+        <FilePreviewModal
+          document={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          onDownload={handleDownload}
+        />
+      )}
     </div>
   );
 };

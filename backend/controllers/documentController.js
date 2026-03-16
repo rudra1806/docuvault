@@ -189,6 +189,69 @@ const downloadDocument = async (req, res) => {
   }
 };
 
+// ── GET /api/documents/preview/:id ─────────────────────────
+// Stream the file from Cloudinary for inline preview in the browser
+const previewDocument = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found",
+      });
+    }
+
+    if (document.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this document",
+      });
+    }
+
+    let previewURL = document.fileURL;
+
+    // For images, add fl_attachment override removal if present
+    if (document.resourceType === "image" && previewURL.includes("cloudinary.com")) {
+      previewURL = previewURL.replace("/upload/fl_attachment/", "/upload/");
+    }
+
+    const mimeType = MIME_TYPES[document.fileType] || "application/octet-stream";
+
+    // Content-Disposition: inline tells the browser to render the file
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${encodeURIComponent(document.fileName)}"`
+    );
+
+    const protocol = previewURL.startsWith("https") ? https : http;
+
+    protocol.get(previewURL, (fileStream) => {
+      if (fileStream.statusCode !== 200) {
+        console.error("Cloudinary preview fetch failed:", fileStream.statusCode);
+        return res.status(502).json({
+          success: false,
+          message: "Failed to fetch file from cloud storage",
+        });
+      }
+      fileStream.pipe(res);
+    }).on("error", (err) => {
+      console.error("Error fetching preview from Cloudinary:", err);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching file preview",
+      });
+    });
+  } catch (error) {
+    console.error("Preview error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while previewing document",
+    });
+  }
+};
+
 // ── DELETE /api/documents/:id ──────────────────────────────
 // Delete a document from Cloudinary and MongoDB
 const deleteDocument = async (req, res) => {
@@ -240,5 +303,6 @@ module.exports = {
   uploadDocument,
   getDocuments,
   downloadDocument,
+  previewDocument,
   deleteDocument,
 };

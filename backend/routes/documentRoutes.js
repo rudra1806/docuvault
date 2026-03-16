@@ -12,6 +12,7 @@ const {
   uploadDocument,
   getDocuments,
   downloadDocument,
+  previewDocument,
   deleteDocument,
 } = require("../controllers/documentController");
 
@@ -21,8 +22,11 @@ router.post("/upload", protect, upload.single("file"), uploadDocument);
 // GET    /api/documents              — List all documents (with optional ?search=)
 router.get("/", protect, getDocuments);
 
-// GET    /api/documents/download/:id — Get download URL for a document
+// GET    /api/documents/download/:id — Download a document
 router.get("/download/:id", protect, downloadDocument);
+
+// GET    /api/documents/preview/:id  — Preview a document inline
+router.get("/preview/:id", protect, previewDocument);
 
 // DELETE /api/documents/:id          — Delete a document
 router.delete("/:id", protect, deleteDocument);

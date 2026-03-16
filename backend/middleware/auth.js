@@ -24,6 +24,11 @@ const protect = async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   }
 
+  // Also accept token from query param (needed for iframe/img preview)
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
+
   // If no token was found, return 401
   if (!token) {
     return res.status(401).json({
