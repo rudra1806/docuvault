@@ -279,9 +279,16 @@ const deleteDocument = async (req, res) => {
       document.resourceType ||
       (IMAGE_EXTENSIONS.includes(document.fileType) ? "image" : "raw");
 
+    // Delete from Cloudinary
     await cloudinary.uploader.destroy(document.cloudinaryId, {
       resource_type: resourceType,
     });
+
+    // CASCADE DELETE: Remove all share links associated with this document
+    const SharedLink = require("../models/SharedLink");
+    const deletedShares = await SharedLink.deleteMany({ documentId: req.params.id });
+    
+    console.log(`Deleted ${deletedShares.deletedCount} share links for document ${req.params.id}`);
 
     // Remove the document record from MongoDB
     await Document.findByIdAndDelete(req.params.id);
@@ -289,6 +296,7 @@ const deleteDocument = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Document deleted successfully",
+      deletedShares: deletedShares.deletedCount,
     });
   } catch (error) {
     console.error("Delete error:", error);

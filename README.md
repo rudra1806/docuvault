@@ -5,8 +5,8 @@
 <h1 align="center">📄 DocuVault</h1>
 
 <p align="center">
-  <strong>A secure, cloud-based Document Management System</strong><br/>
-  Upload · Preview · Download · Manage — all from your browser.
+  <strong>A secure, cloud-based Document Management System with File Sharing</strong><br/>
+  Upload · Preview · Download · Share · Manage — all from your browser.
 </p>
 
 <p align="center">
@@ -27,11 +27,15 @@
 Whether it's PDFs, images, spreadsheets, or text files — upload it once, access it anywhere.
 
 **✨ Latest Updates:**
+- ✅ **File Sharing with Public Links** — Generate secure shareable links with password protection and expiration
+- ✅ **Cascade Deletion** — Share links automatically removed when documents are deleted
+- ✅ **Enhanced Security** — Password validation (min 6 chars), XSS protection, input sanitization
+- ✅ **Better UX** — Loading states for async actions, improved error handling
+- ✅ **Utility Scripts** — Database cleanup and cascade deletion testing tools
+- ✅ **Code Quality** — Constants for magic numbers, optimized React hooks, memory-efficient logging
 - ✅ Environment-based configuration for production deployment
 - ✅ Enhanced CORS security with origin whitelist
 - ✅ Database indexes for optimized query performance
-- ✅ Fixed upload progress tracking
-- ✅ Comprehensive error handling and user feedback
 
 ---
 
@@ -44,6 +48,18 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 - **Per-user isolation** — users can only view, download, and delete their own files
 - **CORS whitelist** — configurable allowed origins for production security
 - **Environment variables** — sensitive credentials never hardcoded
+
+### 🔗 File Sharing (NEW!)
+- **Generate shareable links** — Create unique, secure links for any document
+- **Password protection** — Optional password encryption with bcrypt (minimum 6 characters)
+- **Expiration control** — Set links to expire after 1h, 24h, 7d, 30d, or never
+- **Permission levels** — Choose between view-only or download access
+- **Access analytics** — Track views, downloads, and access history with IP logging
+- **Public access** — Recipients don't need an account to view shared files
+- **Link management** — Toggle active/inactive status or delete links anytime
+- **My Shares dashboard** — Centralized view of all your shared links with analytics
+- **Cascade deletion** — Share links automatically deleted when document is removed
+- **XSS protection** — File names sanitized to prevent cross-site scripting attacks
 
 ### 📤 File Upload
 - **Drag & drop** or click-to-browse file upload
@@ -120,6 +136,8 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 | **Authentication** | JWT (JSON Web Tokens) + bcrypt           |
 | **HTTP Client** | Axios (with interceptors)                   |
 | **File Upload** | Multer + multer-storage-cloudinary          |
+| **Security**    | bcrypt, crypto, input sanitization          |
+| **Dev Tools**   | Nodemon, ESLint, PostCSS                    |
 
 ---
 
@@ -133,15 +151,21 @@ DocuVault/
 │   │   └── cloudinary.js          # Cloudinary SDK + Multer storage config
 │   ├── controllers/
 │   │   ├── authController.js      # Register & Login handlers
-│   │   └── documentController.js  # Upload, List, Download, Preview, Delete
+│   │   ├── documentController.js  # Upload, List, Download, Preview, Delete
+│   │   └── shareController.js     # Share link creation & management
 │   ├── middleware/
 │   │   └── auth.js                # JWT verification middleware
 │   ├── models/
 │   │   ├── User.js                # User schema with bcrypt + indexes
-│   │   └── Document.js            # Document metadata schema + indexes
+│   │   ├── Document.js            # Document metadata schema + indexes
+│   │   └── SharedLink.js          # Share link schema with analytics
 │   ├── routes/
 │   │   ├── authRoutes.js          # POST /api/auth/*
-│   │   └── documentRoutes.js      # GET/POST/DELETE /api/documents/*
+│   │   ├── documentRoutes.js      # GET/POST/DELETE /api/documents/*
+│   │   └── shareRoutes.js         # GET/POST/DELETE /api/share/*
+│   ├── scripts/
+│   │   ├── clearDatabase.js       # Database cleanup utility
+│   │   └── testCascadeDelete.js   # Test cascade deletion feature
 │   ├── server.js                  # Express entry point
 │   ├── .env                       # Environment variables (create from .env.example)
 │   ├── .env.example               # Environment variable template
@@ -154,7 +178,8 @@ DocuVault/
 │   │   │   ├── FileCard.jsx          # Document card with actions
 │   │   │   ├── FilePreviewModal.jsx  # Full-screen file preview
 │   │   │   ├── SearchBar.jsx         # Debounced search input
-│   │   │   └── ProtectedRoute.jsx    # Auth guard for routes
+│   │   │   ├── ProtectedRoute.jsx    # Auth guard for routes
+│   │   │   └── ShareModal.jsx        # Share link creation modal
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx       # React context for auth state
 │   │   ├── pages/
@@ -162,7 +187,9 @@ DocuVault/
 │   │   │   ├── RegisterPage.jsx      # Create account page
 │   │   │   ├── DashboardPage.jsx     # Welcome + stats + recent docs
 │   │   │   ├── UploadPage.jsx        # Drag & drop file upload
-│   │   │   └── DocumentsPage.jsx     # Searchable document list
+│   │   │   ├── DocumentsPage.jsx     # Searchable document list
+│   │   │   ├── MySharesPage.jsx      # Share management dashboard
+│   │   │   └── SharedDocumentPage.jsx # Public shared file viewer
 │   │   ├── services/
 │   │   │   └── api.js                # Axios instance + API functions
 │   │   ├── App.jsx                   # React Router setup
@@ -176,11 +203,7 @@ DocuVault/
 │   └── package.json
 │
 ├── README.md                      # This file
-└── FIXES_APPLIED.md               # Detailed changelog and fixes
 ```
-
----
-
 ## 🔌 API Reference
 
 ### Authentication
@@ -199,6 +222,19 @@ DocuVault/
 | GET    | `/api/documents/download/:id`  | Download a file (streams bytes as attachment) |
 | GET    | `/api/documents/preview/:id`   | Preview a file (streams bytes inline)        |
 | DELETE | `/api/documents/:id`           | Delete from Cloudinary + MongoDB             |
+
+### Share Links <sub>(protected routes require `Authorization: Bearer <token>`)</sub>
+
+| Method | Endpoint                       | Description                                  | Auth Required |
+| ------ | ------------------------------ | -------------------------------------------- | ------------- |
+| POST   | `/api/share/create`            | Create a new share link                      | ✅            |
+| GET    | `/api/share/my-shares`         | Get all user's share links                   | ✅            |
+| GET    | `/api/share/document/:id`      | Get all shares for a document                | ✅            |
+| DELETE | `/api/share/:id`               | Delete a share link                          | ✅            |
+| PATCH  | `/api/share/:id/toggle`        | Toggle share link active/inactive            | ✅            |
+| POST   | `/api/share/access/:token`     | Verify access to shared link (with password) | ❌            |
+| GET    | `/api/share/preview/:token`    | Preview shared document                      | ❌            |
+| GET    | `/api/share/download/:token`   | Download shared document                     | ❌            |
 
 ---
 
@@ -226,10 +262,31 @@ DocuVault/
 | `userId`       | ObjectId | Reference to the uploading user        | ✅    |
 | `uploadDate`   | Date     | Auto-generated timestamp               | ✅    |
 
+### `sharedlinks` Collection (NEW!)
+
+| Field            | Type     | Description                                | Index |
+| ---------------- | -------- | ------------------------------------------ | ----- |
+| `token`          | String   | Unique 32-char hex token for the link     | ✅    |
+| `documentId`     | ObjectId | Reference to shared document               | ✅    |
+| `createdBy`      | ObjectId | Reference to user who created share        | ✅    |
+| `password`       | String   | Optional bcrypt hashed password            | -     |
+| `permission`     | String   | `"view"` or `"download"`                   | -     |
+| `expiresAt`      | Date     | Optional expiration timestamp              | ✅    |
+| `accessCount`    | Number   | Number of times link was accessed          | -     |
+| `downloadCount`  | Number   | Number of times file was downloaded        | -     |
+| `lastAccessedAt` | Date     | Last access timestamp                      | -     |
+| `accessLog`      | Array    | Last 50 access entries (IP, user agent)    | -     |
+| `isActive`       | Boolean  | Whether link is currently active           | -     |
+| `createdAt`      | Date     | Share creation timestamp                   | -     |
+
 **Indexes:**
 - `{ userId: 1, uploadDate: -1 }` — Fast document listing sorted by date
 - `{ userId: 1, fileName: 1 }` — Fast search by filename
 - `{ email: 1 }` — Fast user authentication lookups
+- `{ token: 1 }` — Fast share link lookups (unique)
+- `{ documentId: 1 }` — Fast document share queries
+- `{ createdBy: 1 }` — Fast user share queries
+- `{ expiresAt: 1 }` — Fast expiration checks
 
 ---
 
@@ -346,18 +403,47 @@ npm run dev
 3. Upload a test document (PDF, image, or text file)
 4. Try previewing, downloading, and deleting documents
 5. Test the search functionality
+6. **Test file sharing:**
+   - Click the share icon on any document
+   - Create a share link with password protection (min 6 characters)
+   - Copy the link and open it in an incognito window
+   - Test password verification and file access
+   - View analytics in the "My Shares" page
+   - Delete a document and verify share links are removed
+
+---
+
+## 🛠️ Utility Scripts
+
+The backend includes helpful utility scripts:
+
+```bash
+cd backend
+
+# Clear entire database (⚠️ use with caution!)
+npm run clear-db
+
+# Test cascade deletion feature
+npm run test-cascade
+```
+
+**Script Details:**
+- `clear-db` - Removes all users, documents, and share links from database
+- `test-cascade` - Verifies that deleting a document also deletes its share links
 
 ---
 
 ## 🖼️ Application Pages
 
-| Page           | Route        | Description                                           | Auth Required |
-| -------------- | ------------ | ----------------------------------------------------- | ------------- |
-| **Login**      | `/login`     | Sign in with email & password                         | ❌            |
-| **Register**   | `/register`  | Create a new account with name, email & password      | ❌            |
-| **Dashboard**  | `/dashboard` | Welcome banner, document stats, quick actions, recent files | ✅      |
-| **Upload**     | `/upload`    | Drag & drop or file browser with progress bar         | ✅            |
-| **Documents**  | `/documents` | Full document list with search, preview, download, delete | ✅        |
+| Page           | Route              | Description                                           | Auth Required |
+| -------------- | ------------------ | ----------------------------------------------------- | ------------- |
+| **Login**      | `/login`           | Sign in with email & password                         | ❌            |
+| **Register**   | `/register`        | Create a new account with name, email & password      | ❌            |
+| **Dashboard**  | `/dashboard`       | Welcome banner, document stats, quick actions, recent files | ✅      |
+| **Upload**     | `/upload`          | Drag & drop or file browser with progress bar         | ✅            |
+| **Documents**  | `/documents`       | Full document list with search, preview, download, delete, share | ✅ |
+| **My Shares**  | `/shares`          | Manage all share links with analytics dashboard       | ✅            |
+| **Shared Doc** | `/shared/:token`   | Public shared document viewer (password if protected) | ❌            |
 
 ---
 
@@ -375,6 +461,11 @@ npm run dev
 | Download security          | Files proxied through backend — Cloudinary URLs never exposed |
 | Environment variables      | Sensitive credentials stored in `.env` files (not in code)  |
 | Database indexes           | Optimized queries prevent performance-based attacks         |
+| Share link security        | 32-char random tokens, optional password protection         |
+| Share expiration           | Automatic validation on every access attempt                |
+| Access tracking            | IP addresses and user agents logged for security auditing   |
+| Cascade deletion           | Share links automatically removed when document is deleted   |
+| Input sanitization         | XSS protection for file names and user inputs                |
 
 ---
 
@@ -514,6 +605,24 @@ npm run dev
 - [ ] Delete file and verify removal from list
 - [ ] Verify deleted file is removed from Cloudinary
 
+**File Sharing:**
+- [ ] Create share link with view-only permission
+- [ ] Create share link with download permission
+- [ ] Create password-protected share link (min 6 characters)
+- [ ] Try password less than 6 characters (should show error)
+- [ ] Create share link with expiration (24 hours)
+- [ ] Copy share link to clipboard
+- [ ] Access share link in incognito window
+- [ ] Verify password protection works
+- [ ] Verify expiration works (after time passes)
+- [ ] Toggle share link active/inactive (should show loading spinner)
+- [ ] Delete share link (should show loading spinner)
+- [ ] View analytics in My Shares page
+- [ ] Verify access count increments
+- [ ] Verify download count increments (download permission only)
+- [ ] Delete document and verify share links are removed (cascade deletion)
+- [ ] Test XSS protection with HTML in filename
+
 **UI/UX:**
 - [ ] Test on mobile device (responsive design)
 - [ ] Test on tablet device
@@ -615,6 +724,60 @@ Solution:
 
 ---
 
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue: "Failed to connect to MongoDB"**
+- Verify your `MONGODB_URI` in `.env` is correct
+- Check MongoDB Atlas Network Access allows your IP (0.0.0.0/0 for development)
+- Ensure database user credentials are correct
+
+**Issue: "Cloudinary upload failed"**
+- Verify `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in `.env`
+- Check Cloudinary dashboard for API usage limits
+- Ensure file size is within limits (default: 10MB)
+
+**Issue: "Token expired" or constant logouts**
+- Check `JWT_SECRET` is set in backend `.env`
+- Verify `JWT_EXPIRE` is set (default: 7d)
+- Clear browser localStorage and login again
+
+**Issue: "CORS error" in browser console**
+- Verify `FRONTEND_URL` in backend `.env` matches your frontend URL
+- Check CORS configuration in `backend/server.js`
+- For production, update allowed origins
+
+**Issue: Share links not working**
+- Verify share link is active (not toggled off)
+- Check if link has expired
+- Ensure password is correct (if protected)
+- Check browser console for errors
+
+**Issue: Duplicate export error in api.js**
+- This was fixed - ensure you have the latest code
+- Only one `getApiBaseUrl` export should exist at line 22
+
+**Issue: Share links not deleted when document is removed**
+- This was fixed with cascade deletion
+- Run `npm run test-cascade` to verify it works
+- Check backend logs for cascade deletion messages
+
+### Debug Mode
+
+Enable detailed logging:
+
+```bash
+# Backend
+cd backend
+DEBUG=* npm run dev
+
+# Check MongoDB queries
+MONGOOSE_DEBUG=true npm run dev
+```
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -647,10 +810,13 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 📞 Support
 
+---
+
+## 📞 Support
+
 For issues, questions, or suggestions:
 - 📧 Email: [your-email@example.com]
 - 🐛 Issues: [GitHub Issues](https://github.com/yourusername/docuvault/issues)
-- 📖 Documentation: See `FIXES_APPLIED.md` for detailed changelog
 
 ---
 

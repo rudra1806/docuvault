@@ -13,6 +13,8 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import UploadPage from "./pages/UploadPage";
 import DocumentsPage from "./pages/DocumentsPage";
+import MySharesPage from "./pages/MySharesPage";
+import SharedDocumentPage from "./pages/SharedDocumentPage";
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
           {/* ── Public Routes ──────────────────────────── */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/shared/:token" element={<SharedDocumentPage />} />
 
           {/* ── Protected Routes ───────────────────────── */}
           <Route
@@ -45,6 +48,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DocumentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shares"
+            element={
+              <ProtectedRoute>
+                <MySharesPage />
               </ProtectedRoute>
             }
           />

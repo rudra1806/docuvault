@@ -87,4 +87,39 @@ export const downloadDocument = (id) =>
  */
 export const deleteDocument = (id) => api.delete(`/documents/${id}`);
 
+// ═══════════════════════════════════════════════════════════
+// Share API Functions
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Create a new share link for a document
+ */
+export const createShareLink = (data) => api.post("/share/create", data);
+
+/**
+ * Get all share links created by the current user
+ */
+export const getMyShares = () => api.get("/share/my-shares");
+
+/**
+ * Get all share links for a specific document
+ */
+export const getDocumentShares = (documentId) => api.get(`/share/document/${documentId}`);
+
+/**
+ * Delete a share link
+ */
+export const deleteShareLink = (shareId) => api.delete(`/share/${shareId}`);
+
+/**
+ * Toggle share link active status
+ */
+export const toggleShareLink = (shareId) => api.patch(`/share/${shareId}/toggle`);
+
+/**
+ * Verify access to a shared link (public, no auth required)
+ */
+export const verifyShareAccess = (token, password = "") =>
+  axios.post(`${API_BASE_URL}/share/access/${token}`, { password });
+
 export default api;

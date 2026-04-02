@@ -64,4 +64,34 @@ const documentSchema = new mongoose.Schema({
 documentSchema.index({ userId: 1, uploadDate: -1 }); // For listing user's documents sorted by date
 documentSchema.index({ userId: 1, fileName: 1 }); // For searching by filename
 
+// ── Pre-remove Hook: Cascade delete share links ────────────
+// This ensures share links are deleted even if document is removed directly
+documentSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+  try {
+    const SharedLink = require("./SharedLink");
+    await SharedLink.deleteMany({ documentId: this._id });
+    console.log(`Cascade deleted share links for document ${this._id}`);
+    next();
+  } catch (error) {
+    console.error("Error in cascade delete:", error);
+    next(error);
+  }
+});
+
+// Also handle findByIdAndDelete and findOneAndDelete
+documentSchema.pre('findOneAndDelete', async function(next) {
+  try {
+    const doc = await this.model.findOne(this.getQuery());
+    if (doc) {
+      const SharedLink = require("./SharedLink");
+      await SharedLink.deleteMany({ documentId: doc._id });
+      console.log(`Cascade deleted share links for document ${doc._id}`);
+    }
+    next();
+  } catch (error) {
+    console.error("Error in cascade delete:", error);
+    next(error);
+  }
+});
+
 module.exports = mongoose.model("Document", documentSchema);

@@ -16,6 +16,7 @@ dotenv.config();
 // Import route files
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const shareRoutes = require("./routes/shareRoutes");
 
 // Initialize Express app
 const app = express();
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 // ── API Routes ─────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/share", shareRoutes);
 
 // ── Health Check Route ─────────────────────────────────────
 app.get("/", (req, res) => {

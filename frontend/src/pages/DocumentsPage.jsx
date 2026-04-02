@@ -9,12 +9,14 @@ import Navbar from "../components/Navbar";
 import FileCard from "../components/FileCard";
 import SearchBar from "../components/SearchBar";
 import FilePreviewModal from "../components/FilePreviewModal";
+import ShareModal from "../components/ShareModal";
 
 const DocumentsPage = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [shareDoc, setShareDoc] = useState(null);
 
   useEffect(() => {
     fetchDocuments(searchTerm);
@@ -66,6 +68,10 @@ const DocumentsPage = () => {
 
   const handlePreview = (doc) => {
     setPreviewDoc(doc);
+  };
+
+  const handleShare = (doc) => {
+    setShareDoc(doc);
   };
 
   return (
@@ -136,6 +142,7 @@ const DocumentsPage = () => {
                   onDownload={handleDownload}
                   onDelete={handleDelete}
                   onPreview={handlePreview}
+                  onShare={handleShare}
                 />
               </div>
             ))}
@@ -148,6 +155,13 @@ const DocumentsPage = () => {
           document={previewDoc}
           onClose={() => setPreviewDoc(null)}
           onDownload={handleDownload}
+        />
+      )}
+
+      {shareDoc && (
+        <ShareModal
+          document={shareDoc}
+          onClose={() => setShareDoc(null)}
         />
       )}
     </div>

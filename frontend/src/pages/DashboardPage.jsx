@@ -9,6 +9,7 @@ import { getDocuments, downloadDocument, deleteDocument } from "../services/api"
 import Navbar from "../components/Navbar";
 import FileCard from "../components/FileCard";
 import FilePreviewModal from "../components/FilePreviewModal";
+import ShareModal from "../components/ShareModal";
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ const DashboardPage = () => {
   const [totalDocs, setTotalDocs] = useState(0);
   const [loading, setLoading] = useState(true);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [shareDoc, setShareDoc] = useState(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -54,6 +56,10 @@ const DashboardPage = () => {
 
   const handlePreview = (doc) => {
     setPreviewDoc(doc);
+  };
+
+  const handleShare = (doc) => {
+    setShareDoc(doc);
   };
 
   const handleDelete = async (id) => {
@@ -194,6 +200,7 @@ const DashboardPage = () => {
                     onDownload={handleDownload}
                     onDelete={handleDelete}
                     onPreview={handlePreview}
+                    onShare={handleShare}
                   />
                 </div>
               ))}
@@ -207,6 +214,13 @@ const DashboardPage = () => {
           document={previewDoc}
           onClose={() => setPreviewDoc(null)}
           onDownload={handleDownload}
+        />
+      )}
+
+      {shareDoc && (
+        <ShareModal
+          document={shareDoc}
+          onClose={() => setShareDoc(null)}
         />
       )}
     </div>

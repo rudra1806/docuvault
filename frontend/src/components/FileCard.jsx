@@ -48,7 +48,7 @@ const formatDate = (dateString) => {
   });
 };
 
-const FileCard = ({ document, onDownload, onDelete, onPreview }) => {
+const FileCard = ({ document, onDownload, onDelete, onPreview, onShare }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { color, label } = getFileIcon(document.fileType);
 
@@ -82,6 +82,22 @@ const FileCard = ({ document, onDownload, onDelete, onPreview }) => {
 
       {/* ── Actions ──────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 transition-all duration-300 shrink-0">
+        {/* Share Button */}
+        {onShare && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare(document);
+            }}
+            className="p-2 rounded-lg text-muted-400 hover:text-primary-400 hover:bg-primary-500/10 transition-all duration-200"
+            title="Share"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+          </button>
+        )}
+
         {/* Preview Button */}
         <button
           onClick={(e) => {

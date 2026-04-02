@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "clear-db": "node scripts/clearDatabase.js",
+    "test-cascade": "node scripts/testCascadeDelete.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
