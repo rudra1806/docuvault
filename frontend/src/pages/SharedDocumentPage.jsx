@@ -23,6 +23,7 @@ const SharedDocumentPage = () => {
   const [share, setShare] = useState(null);
   const [textContent, setTextContent] = useState("");
   const [textLoading, setTextLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     verifyAccess();
@@ -190,7 +191,7 @@ const SharedDocumentPage = () => {
     <div className="min-h-screen bg-surface-500">
       {/* Header */}
       <div className="bg-surface-400 border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className={`${isFullscreen ? 'max-w-full' : 'max-w-5xl'} mx-auto px-4 sm:px-6 lg:px-8 py-4`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center border border-primary-500/20">
@@ -206,30 +207,54 @@ const SharedDocumentPage = () => {
               </div>
             </div>
 
-            {canDownload && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleDownload}
-                className="btn-primary flex items-center gap-2"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="btn-secondary flex items-center gap-2"
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download
+                {isFullscreen ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                    </svg>
+                    Exit Fullscreen
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                    </svg>
+                    Fullscreen
+                  </>
+                )}
               </button>
-            )}
+              {canDownload && (
+                <button
+                  onClick={handleDownload}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Preview */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-surface-400 rounded-2xl border border-white/[0.06] overflow-hidden" style={{ minHeight: "70vh" }}>
+      <div className={`${isFullscreen ? 'max-w-full' : 'max-w-5xl'} mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
+        <div className="bg-surface-400 rounded-2xl border border-white/[0.06] overflow-hidden" style={{ minHeight: isFullscreen ? "85vh" : "70vh" }}>
           {isImage ? (
             <div className="flex items-center justify-center p-8">
               <img
                 src={getPreviewSrc()}
                 alt={doc.fileName}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                className="max-w-full object-contain rounded-lg"
+                style={{ maxHeight: isFullscreen ? "85vh" : "70vh" }}
               />
             </div>
           ) : isPDF ? (
@@ -237,7 +262,7 @@ const SharedDocumentPage = () => {
               src={getPreviewSrc()}
               title={doc.fileName}
               className="w-full border-0 bg-white"
-              style={{ height: "70vh" }}
+              style={{ height: isFullscreen ? "85vh" : "70vh" }}
             />
           ) : isText ? (
             <div className="p-6">
