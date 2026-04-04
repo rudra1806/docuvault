@@ -6,6 +6,7 @@
 // ============================================================
 
 const mongoose = require("mongoose");
+const logger = require("../config/logger");
 
 const documentSchema = new mongoose.Schema({
   // Original file name chosen by the user
@@ -64,10 +65,10 @@ documentSchema.pre('deleteOne', { document: true, query: false }, async function
   try {
     const SharedLink = require("./SharedLink");
     await SharedLink.deleteMany({ documentId: this._id });
-    console.log(`Cascade deleted share links for document ${this._id}`);
+    logger.info(`Cascade deleted share links for document ${this._id}`);
     next();
   } catch (error) {
-    console.error("Error in cascade delete:", error);
+    logger.error("Error in cascade delete:", error);
     next(error);
   }
 });
@@ -79,11 +80,11 @@ documentSchema.pre('findOneAndDelete', async function(next) {
     if (doc) {
       const SharedLink = require("./SharedLink");
       await SharedLink.deleteMany({ documentId: doc._id });
-      console.log(`Cascade deleted share links for document ${doc._id}`);
+      logger.info(`Cascade deleted share links for document ${doc._id}`);
     }
     next();
   } catch (error) {
-    console.error("Error in cascade delete:", error);
+    logger.error("Error in cascade delete:", error);
     next(error);
   }
 });

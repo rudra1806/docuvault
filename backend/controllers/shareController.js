@@ -8,6 +8,7 @@ const SharedLink = require("../models/SharedLink");
 const Document = require("../models/Document");
 const bcrypt = require("bcryptjs");
 const { streamFromS3 } = require("../config/s3");
+const logger = require("../config/logger");
 
 // Constants
 const MAX_ACCESS_LOG_ENTRIES = 50;
@@ -114,7 +115,7 @@ const createShareLink = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Create share link error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while creating share link",
@@ -150,7 +151,7 @@ const getMyShares = async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error("Get my shares error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching shares",
@@ -201,7 +202,7 @@ const getDocumentShares = async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error("Get document shares error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching document shares",
@@ -238,7 +239,7 @@ const deleteShareLink = async (req, res) => {
       message: "Share link deleted successfully",
     });
   } catch (error) {
-    console.error("Delete share link error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while deleting share link",
@@ -277,7 +278,7 @@ const toggleShareLink = async (req, res) => {
       isActive: share.isActive,
     });
   } catch (error) {
-    console.error("Toggle share link error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while toggling share link",
@@ -359,7 +360,7 @@ const verifyShareAccess = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Verify share access error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while verifying access",
@@ -398,7 +399,7 @@ const previewSharedDocument = async (req, res) => {
     // Pipe the S3 stream to the response
     stream.pipe(res);
   } catch (error) {
-    console.error("Preview shared document error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while previewing document",
@@ -449,7 +450,7 @@ const downloadSharedDocument = async (req, res) => {
     // Pipe the S3 stream to the response
     stream.pipe(res);
   } catch (error) {
-    console.error("Download shared document error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while downloading document",

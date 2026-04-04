@@ -7,6 +7,7 @@
 
 const Document = require("../models/Document");
 const { uploadToS3, deleteFromS3, streamFromS3, IMAGE_EXTENSIONS } = require("../config/s3");
+const logger = require("../config/logger");
 
 // MIME type lookup for common file formats
 const MIME_TYPES = {
@@ -56,6 +57,8 @@ const uploadDocument = async (req, res) => {
       req.file.mimetype
     );
 
+    logger.logS3Operation("upload", uploadResult.key, true);
+
     // Create a new document record in MongoDB
     const document = await Document.create({
       fileName: uploadResult.fileName,
@@ -72,7 +75,7 @@ const uploadDocument = async (req, res) => {
       document,
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error during file upload",
@@ -103,7 +106,7 @@ const getDocuments = async (req, res) => {
       documents,
     });
   } catch (error) {
-    console.error("Get documents error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while fetching documents",
@@ -149,7 +152,7 @@ const downloadDocument = async (req, res) => {
     // Pipe the S3 stream to the response
     stream.pipe(res);
   } catch (error) {
-    console.error("Download error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while downloading document",
@@ -192,7 +195,7 @@ const previewDocument = async (req, res) => {
     // Pipe the S3 stream to the response
     stream.pipe(res);
   } catch (error) {
-    console.error("Preview error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while previewing document",
@@ -225,11 +228,13 @@ const deleteDocument = async (req, res) => {
     // Delete from S3
     await deleteFromS3(document.s3Key);
 
+    logger.logS3Operation("delete", document.s3Key, true);
+
     // CASCADE DELETE: Remove all share links associated with this document
     const SharedLink = require("../models/SharedLink");
     const deletedShares = await SharedLink.deleteMany({ documentId: req.params.id });
     
-    console.log(`Deleted ${deletedShares.deletedCount} share links for document ${req.params.id}`);
+    logger.info(`Cascade deleted ${deletedShares.deletedCount} share links for document ${req.params.id}`);
 
     // Remove the document record from MongoDB
     await Document.findByIdAndDelete(req.params.id);
@@ -240,7 +245,7 @@ const deleteDocument = async (req, res) => {
       deletedShares: deletedShares.deletedCount,
     });
   } catch (error) {
-    console.error("Delete error:", error);
+    logger.logError(error);
     res.status(500).json({
       success: false,
       message: "Server error while deleting document",

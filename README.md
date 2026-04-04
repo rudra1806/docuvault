@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" />
   <img src="https://img.shields.io/badge/AWS-S3-FF9900?style=flat-square&logo=amazonaws&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS-CloudWatch-FF9900?style=flat-square&logo=amazonaws&logoColor=white" />
   <img src="https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white" />
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=flat-square" />
 </p>
@@ -27,6 +28,7 @@
 Whether it's PDFs, images, spreadsheets, or text files — upload it once, access it anywhere.
 
 **✨ Latest Updates:**
+- ✅ **AWS CloudWatch Logging** — Centralized logging and monitoring with structured JSON logs
 - ✅ **AWS S3 Integration** — Migrated from Cloudinary to AWS S3 for cost-effective, scalable storage
 - ✅ **File Sharing with Public Links** — Generate secure shareable links with password protection and expiration
 - ✅ **Cascade Deletion** — Share links automatically removed when documents are deleted
@@ -48,6 +50,7 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 - **Protected routes** — only authenticated users can access their documents
 - **Per-user isolation** — users can only view, download, and delete their own files
 - **CORS whitelist** — configurable allowed origins for production security
+- **CloudWatch logging** — Track authentication events, errors, and security incidents
 - **Environment variables** — sensitive credentials never hardcoded
 
 ### 🔗 File Sharing (NEW!)
@@ -134,6 +137,8 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 | **Backend**     | Node.js, Express.js                         |
 | **Database**    | MongoDB Atlas (Mongoose ODM)                |
 | **Cloud Storage** | AWS S3 (Simple Storage Service)           |
+| **Monitoring**  | AWS CloudWatch (Logs + Dashboards)          |
+| **Logging**     | Winston + winston-cloudwatch                |
 | **Authentication** | JWT (JSON Web Tokens) + bcrypt           |
 | **HTTP Client** | Axios (with interceptors)                   |
 | **File Upload** | Multer (memory storage) + AWS SDK v3        |
@@ -149,7 +154,8 @@ DocuVault/
 ├── backend/
 │   ├── config/
 │   │   ├── db.js                  # MongoDB connection setup
-│   │   └── s3.js                  # AWS S3 SDK + Multer configuration
+│   │   ├── s3.js                  # AWS S3 SDK + Multer configuration
+│   │   └── logger.js              # Winston logger + CloudWatch integration
 │   ├── controllers/
 │   │   ├── authController.js      # Register & Login handlers
 │   │   ├── documentController.js  # Upload, List, Download, Preview, Delete
@@ -335,6 +341,11 @@ AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
 AWS_S3_BUCKET_NAME=docuvault-files
 
+# CloudWatch Logging (uses same AWS credentials)
+CLOUDWATCH_GROUP_NAME=/docuvault/api
+LOG_LEVEL=info
+NODE_ENV=development
+
 # Frontend URL for CORS (change in production)
 FRONTEND_URL=http://localhost:5173
 ```
@@ -351,6 +362,15 @@ FRONTEND_URL=http://localhost:5173
 6. Paste them into your `.env` file along with your bucket name and region
 
 For detailed setup instructions, see [AWS_S3_MIGRATION_GUIDE.md](AWS_S3_MIGRATION_GUIDE.md)
+
+#### CloudWatch Logging Setup
+1. CloudWatch uses the same AWS credentials as S3
+2. IAM user needs `CloudWatchLogsFullAccess` policy
+3. Set `NODE_ENV=production` to enable CloudWatch logging
+4. Logs appear in CloudWatch Console under log group `/docuvault/api`
+5. View logs at: https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups
+
+For detailed setup and dashboard creation, see [CLOUDWATCH_SETUP.md](CLOUDWATCH_SETUP.md)
 
 #### MongoDB Atlas Setup
 1. Sign up at [mongodb.com/atlas](https://www.mongodb.com/atlas)
@@ -508,6 +528,9 @@ npm run test-cascade
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
    - `AWS_S3_BUCKET_NAME`
+   - `CLOUDWATCH_GROUP_NAME` (e.g., `/docuvault/api`)
+   - `LOG_LEVEL` (e.g., `info`)
+   - `NODE_ENV` (set to `production` for CloudWatch logging)
    - `FRONTEND_URL` (your production frontend URL)
 
 3. **Start command:** `npm start`
@@ -572,6 +595,9 @@ npm run test-cascade
 | `AWS_ACCESS_KEY_ID`       | Yes      | -       | AWS IAM access key ID                          |
 | `AWS_SECRET_ACCESS_KEY`   | Yes      | -       | AWS IAM secret access key                      |
 | `AWS_S3_BUCKET_NAME`      | Yes      | -       | S3 bucket name for file storage                |
+| `CLOUDWATCH_GROUP_NAME`   | No       | `/docuvault/api` | CloudWatch log group name             |
+| `LOG_LEVEL`               | No       | `info`  | Logging level (error/warn/info/debug)          |
+| `NODE_ENV`                | No       | `development` | Environment (development/production)     |
 | `FRONTEND_URL`            | No       | `http://localhost:5173` | Frontend URL for CORS whitelist |
 
 ### Frontend Environment Variables
@@ -729,6 +755,7 @@ Solution:
 - ✅ Efficient MongoDB queries with indexes
 - ✅ JWT stateless authentication
 - ✅ AWS S3 for scalable, cost-effective storage
+- ✅ CloudWatch logging for monitoring and debugging
 
 ### AWS S3 Benefits
 - ✅ **Cost-effective**: Pay only for what you use (~$0.023/GB/month)
@@ -736,6 +763,14 @@ Solution:
 - ✅ **Scalable**: Handles unlimited files and traffic
 - ✅ **Reliable**: 99.999999999% durability
 - ✅ **Secure**: Encryption at rest, IAM access control
+
+### CloudWatch Logging Benefits
+- ✅ **Centralized logging**: All logs in one place
+- ✅ **Structured JSON**: Easy to search and analyze
+- ✅ **Real-time monitoring**: Track errors as they happen
+- ✅ **Free tier**: 5GB ingestion, 5GB storage/month
+- ✅ **Dashboards**: Visualize metrics and trends
+- ✅ **Alerts**: Get notified of critical issues
 
 ---
 

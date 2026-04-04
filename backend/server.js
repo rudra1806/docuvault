@@ -8,10 +8,12 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const connectDB = require("./config/db");
 
-// Load environment variables from .env file
+// Load environment variables FIRST before any other imports
 dotenv.config();
+
+const connectDB = require("./config/db");
+const logger = require("./config/logger");
 
 // Import route files
 const authRoutes = require("./routes/authRoutes");
@@ -47,7 +49,7 @@ app.get("/", (req, res) => {
 
 // ── Global Error Handler ───────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  logger.logError(err, req);
   res.status(500).json({
     success: false,
     message: err.message || "Internal Server Error",
@@ -59,6 +61,6 @@ const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    logger.info(`Server running on http://localhost:${PORT}`);
   });
 });
