@@ -7,8 +7,7 @@
 const SharedLink = require("../models/SharedLink");
 const Document = require("../models/Document");
 const bcrypt = require("bcryptjs");
-const https = require("https");
-const http = require("http");
+const { streamFromS3 } = require("../config/s3");
 
 // Constants
 const MAX_ACCESS_LOG_ENTRIES = 50;
@@ -384,13 +383,11 @@ const previewSharedDocument = async (req, res) => {
     }
 
     const document = share.documentId;
-    let previewURL = document.fileURL;
 
-    if (document.resourceType === "image" && previewURL.includes("cloudinary.com")) {
-      previewURL = previewURL.replace("/upload/fl_attachment/", "/upload/");
-    }
+    // Get file stream from S3
+    const { stream, contentType } = await streamFromS3(document.s3Key);
 
-    const mimeType = MIME_TYPES[document.fileType] || "application/octet-stream";
+    const mimeType = MIME_TYPES[document.fileType] || contentType || "application/octet-stream";
 
     res.setHeader("Content-Type", mimeType);
     res.setHeader(
@@ -398,25 +395,8 @@ const previewSharedDocument = async (req, res) => {
       `inline; filename="${encodeURIComponent(document.fileName)}"`
     );
 
-    const protocol = previewURL.startsWith("https") ? https : http;
-
-    protocol
-      .get(previewURL, (fileStream) => {
-        if (fileStream.statusCode !== 200) {
-          return res.status(502).json({
-            success: false,
-            message: "Failed to fetch file from cloud storage",
-          });
-        }
-        fileStream.pipe(res);
-      })
-      .on("error", (err) => {
-        console.error("Error fetching preview:", err);
-        res.status(500).json({
-          success: false,
-          message: "Error fetching file preview",
-        });
-      });
+    // Pipe the S3 stream to the response
+    stream.pipe(res);
   } catch (error) {
     console.error("Preview shared document error:", error);
     res.status(500).json({
@@ -450,13 +430,11 @@ const downloadSharedDocument = async (req, res) => {
     }
 
     const document = share.documentId;
-    let downloadURL = document.fileURL;
 
-    if (document.resourceType === "image" && downloadURL.includes("cloudinary.com")) {
-      downloadURL = downloadURL.replace("/upload/", "/upload/fl_attachment/");
-    }
+    // Get file stream from S3
+    const { stream, contentType } = await streamFromS3(document.s3Key);
 
-    const mimeType = MIME_TYPES[document.fileType] || "application/octet-stream";
+    const mimeType = MIME_TYPES[document.fileType] || contentType || "application/octet-stream";
 
     res.setHeader("Content-Type", mimeType);
     res.setHeader(
@@ -468,25 +446,8 @@ const downloadSharedDocument = async (req, res) => {
     share.downloadCount += 1;
     await share.save();
 
-    const protocol = downloadURL.startsWith("https") ? https : http;
-
-    protocol
-      .get(downloadURL, (fileStream) => {
-        if (fileStream.statusCode !== 200) {
-          return res.status(502).json({
-            success: false,
-            message: "Failed to fetch file from cloud storage",
-          });
-        }
-        fileStream.pipe(res);
-      })
-      .on("error", (err) => {
-        console.error("Error downloading:", err);
-        res.status(500).json({
-          success: false,
-          message: "Error downloading file",
-        });
-      });
+    // Pipe the S3 stream to the response
+    stream.pipe(res);
   } catch (error) {
     console.error("Download shared document error:", error);
     res.status(500).json({

@@ -2,14 +2,11 @@
 // controllers/documentController.js — Document Handlers
 // ============================================================
 // Handles uploading, listing, downloading, deleting,
-// and searching documents.
+// and searching documents using AWS S3.
 // ============================================================
 
 const Document = require("../models/Document");
-const { cloudinary, IMAGE_EXTENSIONS } = require("../config/cloudinary");
-const https = require("https");
-const http = require("http");
-const path = require("path");
+const { uploadToS3, deleteFromS3, streamFromS3, IMAGE_EXTENSIONS } = require("../config/s3");
 
 // MIME type lookup for common file formats
 const MIME_TYPES = {
@@ -41,10 +38,10 @@ const MIME_TYPES = {
 };
 
 // ── POST /api/documents/upload ─────────────────────────────
-// Upload a file to Cloudinary and save metadata to MongoDB
+// Upload a file to S3 and save metadata to MongoDB
 const uploadDocument = async (req, res) => {
   try {
-    // Multer + Cloudinary have already uploaded the file at this point
+    // Multer has stored the file in memory
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -52,20 +49,20 @@ const uploadDocument = async (req, res) => {
       });
     }
 
-    // Extract file extension from the original name
-    const fileExtension = path.extname(req.file.originalname).replace(".", "").toLowerCase();
-
-    // Determine resource type (matches the upload config logic)
-    const resourceType = IMAGE_EXTENSIONS.includes(fileExtension) ? "image" : "raw";
+    // Upload to S3
+    const uploadResult = await uploadToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
 
     // Create a new document record in MongoDB
     const document = await Document.create({
-      fileName: req.file.originalname,
-      fileURL: req.file.path, // Cloudinary URL
-      fileType: fileExtension,
-      fileSize: req.file.size || 0,
-      cloudinaryId: req.file.filename, // Cloudinary public_id
-      resourceType: resourceType,
+      fileName: uploadResult.fileName,
+      s3Key: uploadResult.key,
+      fileType: uploadResult.fileType,
+      fileSize: uploadResult.fileSize,
+      resourceType: uploadResult.resourceType,
       userId: req.user._id,
     });
 
@@ -115,7 +112,7 @@ const getDocuments = async (req, res) => {
 };
 
 // ── GET /api/documents/download/:id ────────────────────────
-// Proxy the file from Cloudinary to the client as a download
+// Stream the file from S3 to the client as a download
 const downloadDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
@@ -136,21 +133,11 @@ const downloadDocument = async (req, res) => {
       });
     }
 
-    // Build the correct Cloudinary URL with fl_attachment for download
-    let downloadURL = document.fileURL;
-
-    // For Cloudinary URLs, add fl_attachment flag to force download
-    if (downloadURL.includes("cloudinary.com")) {
-      // For raw files, the URL usually works as-is
-      // For images, we need to ensure the URL forces download
-      if (document.resourceType === "image") {
-        // Insert fl_attachment into the URL
-        downloadURL = downloadURL.replace("/upload/", "/upload/fl_attachment/");
-      }
-    }
+    // Get file stream from S3
+    const { stream, contentType } = await streamFromS3(document.s3Key);
 
     // Determine correct MIME type
-    const mimeType = MIME_TYPES[document.fileType] || "application/octet-stream";
+    const mimeType = MIME_TYPES[document.fileType] || contentType || "application/octet-stream";
 
     // Set headers for file download
     res.setHeader("Content-Type", mimeType);
@@ -159,27 +146,8 @@ const downloadDocument = async (req, res) => {
       `attachment; filename="${encodeURIComponent(document.fileName)}"`
     );
 
-    // Fetch the file from Cloudinary and pipe it to the response
-    const protocol = downloadURL.startsWith("https") ? https : http;
-
-    protocol.get(downloadURL, (fileStream) => {
-      if (fileStream.statusCode !== 200) {
-        console.error("Cloudinary fetch failed with status:", fileStream.statusCode);
-        return res.status(502).json({
-          success: false,
-          message: "Failed to fetch file from cloud storage",
-        });
-      }
-
-      // Pipe the file data directly to the response
-      fileStream.pipe(res);
-    }).on("error", (err) => {
-      console.error("Error fetching from Cloudinary:", err);
-      res.status(500).json({
-        success: false,
-        message: "Error downloading file from cloud storage",
-      });
-    });
+    // Pipe the S3 stream to the response
+    stream.pipe(res);
   } catch (error) {
     console.error("Download error:", error);
     res.status(500).json({
@@ -190,7 +158,7 @@ const downloadDocument = async (req, res) => {
 };
 
 // ── GET /api/documents/preview/:id ─────────────────────────
-// Stream the file from Cloudinary for inline preview in the browser
+// Stream the file from S3 for inline preview in the browser
 const previewDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
@@ -209,14 +177,10 @@ const previewDocument = async (req, res) => {
       });
     }
 
-    let previewURL = document.fileURL;
+    // Get file stream from S3
+    const { stream, contentType } = await streamFromS3(document.s3Key);
 
-    // For images, add fl_attachment override removal if present
-    if (document.resourceType === "image" && previewURL.includes("cloudinary.com")) {
-      previewURL = previewURL.replace("/upload/fl_attachment/", "/upload/");
-    }
-
-    const mimeType = MIME_TYPES[document.fileType] || "application/octet-stream";
+    const mimeType = MIME_TYPES[document.fileType] || contentType || "application/octet-stream";
 
     // Content-Disposition: inline tells the browser to render the file
     res.setHeader("Content-Type", mimeType);
@@ -225,24 +189,8 @@ const previewDocument = async (req, res) => {
       `inline; filename="${encodeURIComponent(document.fileName)}"`
     );
 
-    const protocol = previewURL.startsWith("https") ? https : http;
-
-    protocol.get(previewURL, (fileStream) => {
-      if (fileStream.statusCode !== 200) {
-        console.error("Cloudinary preview fetch failed:", fileStream.statusCode);
-        return res.status(502).json({
-          success: false,
-          message: "Failed to fetch file from cloud storage",
-        });
-      }
-      fileStream.pipe(res);
-    }).on("error", (err) => {
-      console.error("Error fetching preview from Cloudinary:", err);
-      res.status(500).json({
-        success: false,
-        message: "Error fetching file preview",
-      });
-    });
+    // Pipe the S3 stream to the response
+    stream.pipe(res);
   } catch (error) {
     console.error("Preview error:", error);
     res.status(500).json({
@@ -253,7 +201,7 @@ const previewDocument = async (req, res) => {
 };
 
 // ── DELETE /api/documents/:id ──────────────────────────────
-// Delete a document from Cloudinary and MongoDB
+// Delete a document from S3 and MongoDB
 const deleteDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
@@ -274,15 +222,8 @@ const deleteDocument = async (req, res) => {
       });
     }
 
-    // Use the stored resourceType (falls back to guessing for old docs)
-    const resourceType =
-      document.resourceType ||
-      (IMAGE_EXTENSIONS.includes(document.fileType) ? "image" : "raw");
-
-    // Delete from Cloudinary
-    await cloudinary.uploader.destroy(document.cloudinaryId, {
-      resource_type: resourceType,
-    });
+    // Delete from S3
+    await deleteFromS3(document.s3Key);
 
     // CASCADE DELETE: Remove all share links associated with this document
     const SharedLink = require("../models/SharedLink");

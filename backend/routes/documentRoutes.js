@@ -7,7 +7,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
-const { upload } = require("../config/cloudinary");
+const { upload } = require("../config/s3");
 const {
   uploadDocument,
   getDocuments,

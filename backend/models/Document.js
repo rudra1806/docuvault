@@ -2,7 +2,7 @@
 // models/Document.js — Document Schema
 // ============================================================
 // Defines the MongoDB schema for uploaded documents.
-// Each document stores metadata + a reference to its Cloudinary URL.
+// Each document stores metadata + a reference to its S3 key.
 // ============================================================
 
 const mongoose = require("mongoose");
@@ -15,10 +15,10 @@ const documentSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // Cloudinary URL where the file is stored
-  fileURL: {
+  // S3 key (path) where the file is stored
+  s3Key: {
     type: String,
-    required: [true, "File URL is required"],
+    required: [true, "S3 key is required"],
   },
 
   // File type / extension (e.g., "pdf", "jpg")
@@ -33,13 +33,7 @@ const documentSchema = new mongoose.Schema({
     default: 0,
   },
 
-  // Cloudinary public_id (needed for deletion)
-  cloudinaryId: {
-    type: String,
-    required: true,
-  },
-
-  // Cloudinary resource type ("image" or "raw")
+  // Resource type ("image" or "raw") - kept for compatibility
   resourceType: {
     type: String,
     enum: ["image", "raw"],

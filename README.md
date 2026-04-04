@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/Cloudinary-Storage-3448C5?style=flat-square&logo=cloudinary&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS-S3-FF9900?style=flat-square&logo=amazonaws&logoColor=white" />
   <img src="https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white" />
   <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=flat-square" />
 </p>
@@ -22,11 +22,12 @@
 
 ## 🌟 Overview
 
-**DocuVault** is a production-ready, full-stack web application that lets users securely upload, store, preview, and download documents in the cloud. Files are stored on **Cloudinary** with metadata in **MongoDB**, and the entire system is protected by **JWT-based authentication**.
+**DocuVault** is a production-ready, full-stack web application that lets users securely upload, store, preview, and download documents in the cloud. Files are stored on **AWS S3** with metadata in **MongoDB**, and the entire system is protected by **JWT-based authentication**.
 
 Whether it's PDFs, images, spreadsheets, or text files — upload it once, access it anywhere.
 
 **✨ Latest Updates:**
+- ✅ **AWS S3 Integration** — Migrated from Cloudinary to AWS S3 for cost-effective, scalable storage
 - ✅ **File Sharing with Public Links** — Generate secure shareable links with password protection and expiration
 - ✅ **Cascade Deletion** — Share links automatically removed when documents are deleted
 - ✅ **Enhanced Security** — Password validation (min 6 chars), XSS protection, input sanitization
@@ -67,7 +68,7 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 - **Client + server-side validation** for file type and size
 - **15+ supported file types**: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, TXT, CSV, ZIP, RAR, JSON, XML, and more
 - **10 MB max** file size per upload
-- **Cloudinary integration** for reliable cloud storage
+- **AWS S3 integration** for reliable, cost-effective cloud storage
 
 ### 👁️ File Preview
 - **In-app preview modal** — view files without downloading
@@ -78,16 +79,16 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 - **Keyboard shortcut** — press `Esc` to close the preview
 
 ### 📥 File Download
-- **Byte-perfect downloads** — files are proxied through the backend, preserving the exact original content
+- **Byte-perfect downloads** — files are streamed through the backend, preserving the exact original content
 - **Correct MIME types** and `Content-Disposition` headers for every file format
-- **No CORS issues** — the backend streams the file, so the browser never contacts Cloudinary directly
+- **No CORS issues** — the backend streams the file directly from S3
 - **Automatic filename preservation** — downloads use the original filename
 
 ### 🗂️ Document Management
 - **Dashboard** with welcome banner, document count stats, and recent files
 - **Documents page** with full list of all uploaded files
 - **Real-time search** by filename with debounced input (400ms)
-- **One-click delete** with confirmation dialog — removes from both Cloudinary and MongoDB
+- **One-click delete** with confirmation dialog — removes from both S3 and MongoDB
 - **Optimized queries** with database indexes for fast performance
 
 ### 🎨 UI/UX
@@ -106,7 +107,7 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 ```
 ┌─────────────────┐     HTTP/REST      ┌─────────────────────┐     Cloud Storage    ┌──────────────┐
 │                 │  ←──────────────→  │                     │  ←────────────────→  │              │
-│   React (Vite)  │                    │  Node.js / Express  │                      │  Cloudinary  │
+│   React (Vite)  │                    │  Node.js / Express  │                      │   AWS S3     │
 │   Frontend      │                    │  Backend API        │                      │  (Files)     │
 │                 │                    │                     │                      │              │
 └─────────────────┘                    └─────────┬───────────┘                      └──────────────┘
@@ -132,10 +133,10 @@ Whether it's PDFs, images, spreadsheets, or text files — upload it once, acces
 | **Frontend**    | React 19, Vite 8, Tailwind CSS 3            |
 | **Backend**     | Node.js, Express.js                         |
 | **Database**    | MongoDB Atlas (Mongoose ODM)                |
-| **Cloud Storage** | Cloudinary (image + raw resource types)   |
+| **Cloud Storage** | AWS S3 (Simple Storage Service)           |
 | **Authentication** | JWT (JSON Web Tokens) + bcrypt           |
 | **HTTP Client** | Axios (with interceptors)                   |
-| **File Upload** | Multer + multer-storage-cloudinary          |
+| **File Upload** | Multer (memory storage) + AWS SDK v3        |
 | **Security**    | bcrypt, crypto, input sanitization          |
 | **Dev Tools**   | Nodemon, ESLint, PostCSS                    |
 
@@ -148,7 +149,7 @@ DocuVault/
 ├── backend/
 │   ├── config/
 │   │   ├── db.js                  # MongoDB connection setup
-│   │   └── cloudinary.js          # Cloudinary SDK + Multer storage config
+│   │   └── s3.js                  # AWS S3 SDK + Multer configuration
 │   ├── controllers/
 │   │   ├── authController.js      # Register & Login handlers
 │   │   ├── documentController.js  # Upload, List, Download, Preview, Delete
@@ -221,7 +222,7 @@ DocuVault/
 | GET    | `/api/documents?search=`       | List all documents (optional search filter)  |
 | GET    | `/api/documents/download/:id`  | Download a file (streams bytes as attachment) |
 | GET    | `/api/documents/preview/:id`   | Preview a file (streams bytes inline)        |
-| DELETE | `/api/documents/:id`           | Delete from Cloudinary + MongoDB             |
+| DELETE | `/api/documents/:id`           | Delete from S3 + MongoDB                     |
 
 ### Share Links <sub>(protected routes require `Authorization: Bearer <token>`)</sub>
 
@@ -254,11 +255,10 @@ DocuVault/
 | Field          | Type     | Description                            | Index |
 | -------------- | -------- | -------------------------------------- | ----- |
 | `fileName`     | String   | Original uploaded file name            | ✅    |
-| `fileURL`      | String   | Cloudinary storage URL                 | -     |
+| `s3Key`        | String   | S3 object key (path in bucket)         | -     |
 | `fileType`     | String   | File extension (e.g., `pdf`, `jpg`)    | -     |
 | `fileSize`     | Number   | Size in bytes                          | -     |
-| `cloudinaryId` | String   | Cloudinary public_id (used for delete) | -     |
-| `resourceType` | String   | `"image"` or `"raw"` (Cloudinary type) | -     |
+| `resourceType` | String   | `"image"` or `"raw"` (for compatibility) | -   |
 | `userId`       | ObjectId | Reference to the uploading user        | ✅    |
 | `uploadDate`   | Date     | Auto-generated timestamp               | ✅    |
 
@@ -299,7 +299,7 @@ DocuVault/
 | **Node.js**     | v18+    | [Download](https://nodejs.org)                           |
 | **npm**         | v9+     | Comes with Node.js                                       |
 | **MongoDB Atlas** | -     | Free tier is sufficient ([signup](https://www.mongodb.com/atlas)) |
-| **Cloudinary**  | -       | Free tier is sufficient ([signup](https://cloudinary.com)) |
+| **AWS Account** | -       | Free tier available ([signup](https://aws.amazon.com))   |
 
 ### 1️⃣ Clone the Repository
 
@@ -329,10 +329,11 @@ MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/cloud-dms?re
 JWT_SECRET=your_super_secret_key_here_min_32_characters
 JWT_EXPIRE=7d
 
-# Cloudinary Configuration
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+# AWS S3 Configuration
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_S3_BUCKET_NAME=docuvault-files
 
 # Frontend URL for CORS (change in production)
 FRONTEND_URL=http://localhost:5173
@@ -341,11 +342,15 @@ FRONTEND_URL=http://localhost:5173
 <details>
 <summary><strong>📋 How to get your credentials</strong></summary>
 
-#### Cloudinary Setup
-1. Sign up at [cloudinary.com](https://cloudinary.com)
-2. Go to **Dashboard** or **Settings** → **API Keys**
-3. Copy your **Cloud Name**, **API Key**, and **API Secret**
-4. Paste them into your `.env` file
+#### AWS S3 Setup
+1. Sign up at [aws.amazon.com](https://aws.amazon.com)
+2. Go to **S3 Console** → Create a bucket (e.g., `docuvault-files`)
+3. Go to **IAM Console** → Create a user with `AmazonS3FullAccess` policy
+4. Create **Access Keys** for the user
+5. Copy **Access Key ID** and **Secret Access Key**
+6. Paste them into your `.env` file along with your bucket name and region
+
+For detailed setup instructions, see [AWS_S3_MIGRATION_GUIDE.md](AWS_S3_MIGRATION_GUIDE.md)
 
 #### MongoDB Atlas Setup
 1. Sign up at [mongodb.com/atlas](https://www.mongodb.com/atlas)
@@ -458,7 +463,7 @@ npm run test-cascade
 | File type validation       | Client-side (MIME type) + server-side (Cloudinary config)   |
 | File size limit            | 10 MB max per upload (configurable)                         |
 | User isolation             | All queries filter by `userId` — users only see their own files |
-| Download security          | Files proxied through backend — Cloudinary URLs never exposed |
+| Download security          | Files streamed through backend — S3 URLs never exposed to client |
 | Environment variables      | Sensitive credentials stored in `.env` files (not in code)  |
 | Database indexes           | Optimized queries prevent performance-based attacks         |
 | Share link security        | 32-char random tokens, optional password protection         |
@@ -499,9 +504,10 @@ npm run test-cascade
    - `MONGODB_URI` (your production MongoDB connection string)
    - `JWT_SECRET` (strong random string)
    - `JWT_EXPIRE` (e.g., `7d`)
-   - `CLOUDINARY_CLOUD_NAME`
-   - `CLOUDINARY_API_KEY`
-   - `CLOUDINARY_API_SECRET`
+   - `AWS_REGION` (e.g., `us-east-1`)
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_S3_BUCKET_NAME`
    - `FRONTEND_URL` (your production frontend URL)
 
 3. **Start command:** `npm start`
@@ -543,7 +549,7 @@ npm run test-cascade
 - [ ] Test file upload, preview, download, delete
 - [ ] Verify CORS is working (no console errors)
 - [ ] Check MongoDB Atlas IP whitelist (add production server IP)
-- [ ] Verify Cloudinary uploads are working
+- [ ] Verify S3 uploads are working (check S3 console)
 - [ ] Test on mobile devices
 - [ ] Set up SSL/TLS certificates (HTTPS)
 - [ ] Configure custom domain (optional)
@@ -562,9 +568,10 @@ npm run test-cascade
 | `MONGODB_URI`             | Yes      | -       | MongoDB connection string                      |
 | `JWT_SECRET`              | Yes      | -       | Secret key for JWT signing (32+ chars)         |
 | `JWT_EXPIRE`              | No       | `7d`    | JWT token expiration time                      |
-| `CLOUDINARY_CLOUD_NAME`   | Yes      | -       | Cloudinary cloud name                          |
-| `CLOUDINARY_API_KEY`      | Yes      | -       | Cloudinary API key                             |
-| `CLOUDINARY_API_SECRET`   | Yes      | -       | Cloudinary API secret                          |
+| `AWS_REGION`              | Yes      | -       | AWS region (e.g., `us-east-1`)                 |
+| `AWS_ACCESS_KEY_ID`       | Yes      | -       | AWS IAM access key ID                          |
+| `AWS_SECRET_ACCESS_KEY`   | Yes      | -       | AWS IAM secret access key                      |
+| `AWS_S3_BUCKET_NAME`      | Yes      | -       | S3 bucket name for file storage                |
 | `FRONTEND_URL`            | No       | `http://localhost:5173` | Frontend URL for CORS whitelist |
 
 ### Frontend Environment Variables
@@ -603,7 +610,7 @@ npm run test-cascade
 - [ ] Preview text file
 - [ ] Download file and verify integrity
 - [ ] Delete file and verify removal from list
-- [ ] Verify deleted file is removed from Cloudinary
+- [ ] Verify deleted file is removed from S3
 
 **File Sharing:**
 - [ ] Create share link with view-only permission
@@ -658,13 +665,14 @@ Solution:
 3. Ensure database user has correct permissions
 ```
 
-**Issue:** "Cloudinary upload failed"
+**Issue:** "S3 upload failed"
 ```
 Solution:
-1. Verify Cloudinary credentials in .env file
-2. Check file size (must be < 10MB)
-3. Verify file type is supported
-4. Check Cloudinary dashboard for quota limits
+1. Verify AWS credentials in .env file
+2. Check S3 bucket exists and name is correct
+3. Verify IAM user has S3 permissions
+4. Check file size (must be < 10MB)
+5. Verify AWS region is correct
 ```
 
 **Issue:** "CORS error in browser console"
@@ -719,8 +727,15 @@ Solution:
 ### Backend Optimizations
 - ✅ File streaming (no memory buffering)
 - ✅ Efficient MongoDB queries with indexes
-- ✅ JWT stateless authentication (no session storage)
-- ✅ Cloudinary CDN for file delivery
+- ✅ JWT stateless authentication
+- ✅ AWS S3 for scalable, cost-effective storage
+
+### AWS S3 Benefits
+- ✅ **Cost-effective**: Pay only for what you use (~$0.023/GB/month)
+- ✅ **Free tier**: 5GB storage, 20K GET, 2K PUT requests/month (12 months)
+- ✅ **Scalable**: Handles unlimited files and traffic
+- ✅ **Reliable**: 99.999999999% durability
+- ✅ **Secure**: Encryption at rest, IAM access control
 
 ---
 
@@ -733,9 +748,12 @@ Solution:
 - Check MongoDB Atlas Network Access allows your IP (0.0.0.0/0 for development)
 - Ensure database user credentials are correct
 
-**Issue: "Cloudinary upload failed"**
-- Verify `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in `.env`
-- Check Cloudinary dashboard for API usage limits
+**Issue: "S3 upload failed" or "Access Denied"**
+- Verify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `.env`
+- Check IAM user has `AmazonS3FullAccess` policy attached
+- Ensure `AWS_S3_BUCKET_NAME` matches your actual bucket name
+- Verify `AWS_REGION` is correct (e.g., `us-east-1`, `ap-south-1`)
+- Check S3 bucket exists in the AWS Console
 - Ensure file size is within limits (default: 10MB)
 
 **Issue: "Token expired" or constant logouts**
