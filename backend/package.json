@@ -9,6 +9,9 @@
     "clear-db": "node scripts/clearDatabase.js",
     "test-cascade": "node scripts/testCascadeDelete.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.1024.0",
     "@aws-sdk/client-s3": "^3.1024.0",
