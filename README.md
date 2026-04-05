@@ -10,13 +10,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/AWS-S3-FF9900?style=flat-square&logo=amazonaws&logoColor=white" />
-  <img src="https://img.shields.io/badge/AWS-CloudWatch-FF9900?style=flat-square&logo=amazonaws&logoColor=white" />
-  <img src="https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=jsonwebtokens&logoColor=white" />
-  <img src="https://img.shields.io/badge/Status-Production%20Ready-success?style=flat-square" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node" />
+  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/MongoDB_Atlas-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <br />
+  <img src="https://img.shields.io/badge/AWS_Amplify-FF9900?style=for-the-badge&logo=awsamplify&logoColor=white" alt="AWS Amplify" />
+  <img src="https://img.shields.io/badge/Elastic_Beanstalk-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS EB" />
+  <img src="https://img.shields.io/badge/Amazon_S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="AWS S3" />
+  <img src="https://img.shields.io/badge/CloudFront-8C4FFF?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS CloudFront" />
+  <img src="https://img.shields.io/badge/CloudWatch-FF4F8B?style=for-the-badge&logo=amazoncloudwatch&logoColor=white" alt="AWS CloudWatch" />
+  <br />
+  <img src="https://img.shields.io/badge/JWT_Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
+  <img src="https://img.shields.io/badge/Status-Production_Ready-00C853?style=for-the-badge" alt="Status" />
 </p>
 
 ---
@@ -175,6 +181,10 @@
 ```
 DocuVault/
 ├── backend/
+│   ├── .platform/
+│   │   └── nginx/
+│   │       └── conf.d/
+│   │           └── proxy.conf       # NGINX file upload size limit override (15M)
 │   ├── config/
 │   │   ├── db.js                    # MongoDB connection with retry logic
 │   │   ├── s3.js                    # AWS S3 SDK v3 + Multer configuration
@@ -479,50 +489,47 @@ npm run test-cascade
 
 ## 🚢 Production Deployment
 
-### Backend Deployment
+The application is specifically configured for a highly available AWS Architecture:
+- **Frontend**: AWS Amplify
+- **Backend**: AWS Elastic Beanstalk (Node.js)
+- **Database**: MongoDB Atlas
+- **Storage**: Amazon S3
+- **Proxy/CDN**: AWS CloudFront (HTTPS)
 
-**Recommended Platforms:** Railway, Render, Heroku, DigitalOcean, AWS EC2
+### Backend Deployment (AWS Elastic Beanstalk)
 
-1. **Build the application:**
+1. **Package the Application:**
    ```bash
    cd backend
-   npm install --production
+   zip -r ../docuvault-backend.zip . -x "node_modules/*" ".env" ".git/*"
    ```
+2. **Deploy via AWS Console:**
+   - Create a new Node.js environment in AWS Elastic Beanstalk.
+   - Upload the `docuvault-backend.zip` file.
+   - Inject all environment variables from your `.env` directly into the Elastic Beanstalk "Environment properties".
+   - **Crucial:** Ensure you explicitly add `PORT=8080`.
 
-2. **Set environment variables** on your hosting platform (see `.env.example`)
+### Frontend Deployment (AWS Amplify)
 
-3. **Start command:** `npm start`
-
-4. **Health check:** `GET /` returns `{ success: true, message: "Cloud DMS API is running 🚀" }`
-
-### Frontend Deployment
-
-**Recommended Platforms:** Vercel, Netlify, Cloudflare Pages
-
-1. **Build the application:**
-   ```bash
-   cd frontend
-   npm run build
-   ```
-
-2. **Set environment variable:**
-   - `VITE_API_URL` = your production backend URL
-
-3. **Deploy the `dist/` folder**
-
-4. **Configure SPA redirects:**
+1. **Monorepo Configuration:**
+   The `frontend/amplify.yml` file is properly configured to tell AWS how to build a subfolder inside a monorepo.
    
-   **Vercel** (`vercel.json`):
-   ```json
-   {
-     "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-   }
-   ```
-   
-   **Netlify** (`_redirects` in `public/`):
-   ```
-   /*    /index.html   200
-   ```
+2. **Deploy via AWS Console:**
+   - Connect your GitHub repository to AWS Amplify.
+   - During setup, check the **Monorepo** box and set the root directory to `frontend`.
+   - Provide the `VITE_API_URL` environment variable pointing to your backend.
+
+### Security & HTTPS (AWS CloudFront)
+
+To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanstalk traffic), wrap your backend in a CDN:
+1. Create an AWS CloudFront Distribution.
+2. Set the Origin to your Elastic Beanstalk URL.
+3. **Critical Settings:**
+   - Viewer protocol policy: `Redirect HTTP to HTTPS`
+   - Allowed HTTP methods: `GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE`
+   - Cache policy: `CachingDisabled`
+   - Origin request policy: `AllViewerAndCloudFrontHeaders-2022-06`
+4. Change your Amplify `VITE_API_URL` to point to the new `.cloudfront.net` domain instead of the Beanstalk domain.
 
 ### Post-Deployment Checklist
 
@@ -573,8 +580,11 @@ npm run test-cascade
 **Issue:** "AWS S3 upload failed"
 - **Solution:** Verify your AWS credentials in `.env`. Ensure the IAM user has `AmazonS3FullAccess` policy.
 
-**Issue:** "CORS error in browser console"
-- **Solution:** Ensure `FRONTEND_URL` in backend `.env` matches your frontend URL exactly.
+**Issue:** "CORS error in browser console" or "Response to preflight request doesn't pass access control check"
+- **Solution:** Ensure `FRONTEND_URL` in your backend AWS Environment Properties matches your frontend URL exactly. **Crucially, ensure there is no trailing slash.** `https://main.app.com` is correct; `https://main.app.com/` will trigger a CORS block.
+
+**Issue:** "Mixed Content Error" or "Network Error on Login"
+- **Solution:** Your frontend is secured with HTTPS but your backend URL is using HTTP. Standard browsers block this. Follow the AWS CloudFront steps in the Production Deployment section to wrap your backend in HTTPS, and update your `VITE_API_URL`.
 
 **Issue:** "JWT token invalid"
 - **Solution:** Check that `JWT_SECRET` is the same in both development and production. Clear browser localStorage and login again.
