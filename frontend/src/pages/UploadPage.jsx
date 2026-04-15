@@ -46,12 +46,12 @@ const FILE_CATEGORIES = [
   },
   { 
     label: 'Images', 
-    exts: ['JPG', 'PNG', 'GIF'],
+    exts: ['JPG', 'PNG', 'GIF', 'WEBP'],
     color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
   },
   { 
-    label: 'Data', 
-    exts: ['JSON', 'ZIP', 'RAR'],
+    label: 'Data & Archives', 
+    exts: ['JSON', 'XML', 'ZIP', 'RAR'],
     color: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
   },
 ];

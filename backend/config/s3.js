@@ -22,8 +22,8 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 
-// File extensions that are images
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico", "tiff"];
+// File extensions that are images (5 types only)
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 
 // Configure Multer to store files in memory (we'll upload to S3 manually)
 const storage = multer.memoryStorage();

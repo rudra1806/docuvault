@@ -14,30 +14,37 @@ const logger = require("../config/logger");
 const MAX_ACCESS_LOG_ENTRIES = 50;
 const MIN_PASSWORD_LENGTH = 6;
 
-// MIME type lookup
+// MIME type lookup for the 18 supported file formats ONLY
 const MIME_TYPES = {
+  // Documents (4 types)
   pdf: "application/pdf",
   doc: "application/msword",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  
+  // Spreadsheets (3 types)
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+  
+  // Presentations (2 types)
   ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  txt: "text/plain",
-  csv: "text/csv",
+  
+  // Images (5 types)
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
   gif: "image/gif",
   webp: "image/webp",
-  svg: "image/svg+xml",
-  zip: "application/zip",
-  rar: "application/x-rar-compressed",
+  
+  // Data Files (2 types)
   json: "application/json",
   xml: "application/xml",
-  html: "text/html",
-  css: "text/css",
-  js: "application/javascript",
+  
+  // Archives (2 types)
+  zip: "application/zip",
+  rar: "application/x-rar-compressed",
 };
 
 // ── POST /api/share/create ─────────────────────────────────

@@ -9,33 +9,37 @@ const Document = require("../models/Document");
 const { uploadToS3, deleteFromS3, streamFromS3, IMAGE_EXTENSIONS } = require("../config/s3");
 const logger = require("../config/logger");
 
-// MIME type lookup for common file formats
+// MIME type lookup for the 18 supported file formats ONLY
 const MIME_TYPES = {
+  // Documents (4 types)
   pdf: "application/pdf",
   doc: "application/msword",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  
+  // Spreadsheets (3 types)
   xls: "application/vnd.ms-excel",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  csv: "text/csv",
+  
+  // Presentations (2 types)
   ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  txt: "text/plain",
-  csv: "text/csv",
+  
+  // Images (5 types)
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
   gif: "image/gif",
   webp: "image/webp",
-  svg: "image/svg+xml",
-  zip: "application/zip",
-  rar: "application/x-rar-compressed",
-  "7z": "application/x-7z-compressed",
-  mp3: "audio/mpeg",
-  mp4: "video/mp4",
+  
+  // Data Files (2 types)
   json: "application/json",
   xml: "application/xml",
-  html: "text/html",
-  css: "text/css",
-  js: "application/javascript",
+  
+  // Archives (2 types)
+  zip: "application/zip",
+  rar: "application/x-rar-compressed",
 };
 
 // ── POST /api/documents/upload ─────────────────────────────
@@ -47,6 +51,26 @@ const uploadDocument = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "No file uploaded. Please select a file.",
+      });
+    }
+
+    // Extract file extension
+    const ext = req.file.originalname.split('.').pop().toLowerCase();
+    
+    // Validate file type - ONLY allow the 18 supported types
+    const ALLOWED_EXTENSIONS = [
+      'pdf', 'doc', 'docx', 'txt',           // Documents
+      'xls', 'xlsx', 'csv',                  // Spreadsheets
+      'ppt', 'pptx',                         // Presentations
+      'jpg', 'jpeg', 'png', 'gif', 'webp',  // Images
+      'json', 'xml',                         // Data Files
+      'zip', 'rar'                           // Archives
+    ];
+    
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        message: `File type .${ext} is not supported. Only these 18 types are allowed: PDF, DOC, DOCX, TXT, XLS, XLSX, CSV, PPT, PPTX, JPG, JPEG, PNG, GIF, WEBP, JSON, XML, ZIP, RAR`,
       });
     }
 
