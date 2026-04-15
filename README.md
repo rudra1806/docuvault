@@ -26,8 +26,17 @@
   <img src="https://img.shields.io/badge/CloudFront-8C4FFF?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS CloudFront" />
   <img src="https://img.shields.io/badge/CloudWatch-FF4F8B?style=for-the-badge&logo=amazoncloudwatch&logoColor=white" alt="AWS CloudWatch" />
   <br />
+<p align="center">
   <img src="https://img.shields.io/badge/JWT_Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
   <img src="https://img.shields.io/badge/Status-Production_Ready-00C853?style=for-the-badge" alt="Status" />
+</p>
+
+<p align="center">
+  <a href="#-overview"><strong>📋 Overview</strong></a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-architecture"><strong>🏗️ Architecture</strong></a> &nbsp;•&nbsp;
+  <a href="./AI_RAG_DOCUMENTATION.md"><strong>🤖 AI RAG Microservice Docs</strong></a> &nbsp;•&nbsp;
+  <a href="#-getting-started"><strong>🚀 Setup Guide</strong></a> &nbsp;•&nbsp;
+  <a href="#-api-reference"><strong>🔌 API Reference</strong></a>
 </p>
 
 ---
@@ -166,6 +175,71 @@ Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, Doc
 ```
 
 **Five-tier cloud architecture**: Frontend (Amplify) → CDN (CloudFront) → Backend (Beanstalk) → Data Layer (Atlas/S3) → AI Microservice (FastAPI + Qdrant + Groq)
+
+### 📤 Sequence Diagram: Document Upload & AI Processing
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend as React Frontend
+    participant Backend as Node.js Backend
+    participant S3 as AWS S3
+    participant MongoDB as MongoDB Atlas
+    participant AI as AI Microservice<br/>(FastAPI)
+    participant HF as HuggingFace API
+    participant Qdrant as Qdrant Cloud
+
+    User->>Frontend: Upload document
+    Frontend->>Backend: POST /api/documents/upload (multipart)
+    Backend->>S3: Upload file buffer
+    S3-->>Backend: S3 key + metadata
+    Backend->>MongoDB: Save document record (aiStatus: pending)
+    Backend-->>Frontend: 201 Created
+    Frontend-->>User: Upload success ✅
+
+    Note over Backend,AI: Async AI Processing (background)
+    Backend->>AI: POST /process (file + metadata)
+    AI->>AI: Extract text (PDF/DOCX/XLSX...)
+    AI->>AI: Clean & chunk text (400 tokens, 100 overlap)
+    AI->>HF: Generate embeddings (BAAI/bge-m3)
+    HF-->>AI: 1024-dim vectors
+    AI->>Qdrant: Upsert vectors + metadata
+    Qdrant-->>AI: Stored ✅
+    AI->>Backend: POST /api/ai/webhook (completed, chunkCount)
+    Backend->>MongoDB: Update aiStatus: completed
+```
+
+### 🔍 Sequence Diagram: AI Document Q&A (RAG)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend as React Frontend<br/>(Ask AI Page)
+    participant Backend as Node.js Backend
+    participant AI as AI Microservice<br/>(FastAPI)
+    participant HF as HuggingFace API
+    participant Qdrant as Qdrant Cloud
+    participant Groq as Groq LLM<br/>(Llama 3.3 70B)
+
+    User->>Frontend: "What was the quarterly revenue?"
+    Frontend->>Backend: POST /api/ai/query { question, userId }
+    Backend->>AI: POST /query { question, user_id }
+
+    Note over AI,Qdrant: Step 1: Embed & Search
+    AI->>HF: Embed question → 1024-dim vector
+    HF-->>AI: Question embedding
+    AI->>Qdrant: Search top 5 similar chunks (filtered by user_id)
+    Qdrant-->>AI: Matched chunks + scores
+
+    Note over AI,Groq: Step 2: Generate Answer
+    AI->>AI: Build prompt (question + retrieved chunks)
+    AI->>Groq: Chat completion (system prompt + context)
+    Groq-->>AI: Generated answer
+
+    AI-->>Backend: { answer, sources, chunks_found }
+    Backend-->>Frontend: { answer, sources }
+    Frontend-->>User: Display answer + source citations 📄
+```
 
 ---
 
@@ -744,31 +818,6 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 - **Vector Indexing** — Qdrant payload indexes for fast filtered searches
 
 ---
-
-## 🔮 Future Enhancements
-
-- [x] ~~AI-powered document Q&A~~ ✅ **Implemented!**
-- [ ] Folder organization and hierarchical structure
-- [ ] Bulk file upload with progress tracking
-- [ ] Advanced search with filters (date, type, size)
-- [ ] File versioning and history
-- [ ] Collaborative editing for documents
-- [ ] Real-time notifications
-- [ ] Two-factor authentication (2FA)
-- [ ] Role-based access control (RBAC)
-- [ ] API rate limiting
-- [ ] Automated testing (unit, integration, E2E)
-- [ ] Docker containerization
-- [ ] CI/CD pipeline
-- [ ] Multi-language support (i18n)
-- [ ] Dark/light theme toggle
-- [ ] File compression before upload
-- [ ] Virus scanning integration
-- [ ] Conversation history persistence for AI chat
-- [ ] Multi-document cross-referencing in AI answers
-
----
-
 
 ## 📄 License
 

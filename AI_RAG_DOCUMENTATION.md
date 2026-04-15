@@ -12,13 +12,29 @@
 
 ---
 
+<p align="center">
+  <a href="./README.md"><strong>📋 Main README</strong></a> &nbsp;•&nbsp;
+  <a href="#-overview"><strong>🌟 Overview</strong></a> &nbsp;•&nbsp;
+  <a href="#-how-rag-works"><strong>🔄 How RAG Works</strong></a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-architecture"><strong>🏗️ Architecture</strong></a> &nbsp;•&nbsp;
+  <a href="#-setup-guide"><strong>🚀 Setup</strong></a> &nbsp;•&nbsp;
+  <a href="#-troubleshooting"><strong>🐛 Troubleshooting</strong></a>
+</p>
+
+---
+
 ## 📖 Table of Contents
 
 - [Overview](#-overview)
 - [How RAG Works](#-how-rag-works)
+  - [Ingestion Phase](#ingestion-phase-when-a-file-is-uploaded)
+  - [Query Phase](#query-phase-when-a-user-asks-a-question)
+  - [Sequence Diagram: Ingestion Pipeline](#sequence-diagram-document-ingestion-pipeline)
+  - [Sequence Diagram: RAG Query Pipeline](#sequence-diagram-rag-query-pipeline)
+  - [Sequence Diagram: File Deletion](#sequence-diagram-file-deletion-cleanup)
 - [Architecture](#-architecture)
-- [AI Service Structure](#-ai-service-structure)
-- [Processing Pipeline](#-processing-pipeline)
+- [AI Microservice Structure](#-ai-microservice-structure)
+- [Processing Pipeline](#%EF%B8%8F-processing-pipeline)
 - [Query Pipeline](#-query-pipeline)
 - [Models & Tech Stack](#-models--tech-stack)
 - [Supported File Types](#-supported-file-types-for-ai-processing)
@@ -94,6 +110,131 @@ This is powered by **Retrieval-Augmented Generation (RAG)** — a technique that
 | 3. **Build Prompt** | `query/answerer.py` | Construct a system prompt with the retrieved chunks as context |
 | 4. **Generate** | `query/answerer.py` | Send to Groq LLM (`llama-3.3-70b-versatile`) and get the answer |
 | 5. **Return** | `routes/query.py` | Return answer + source citations (file names, relevance scores) |
+
+### Sequence Diagram: Document Ingestion Pipeline
+
+```mermaid
+sequenceDiagram
+    participant Backend as Node.js Backend
+    participant API as FastAPI /process
+    participant Router as pipelines/router.py
+    participant Pipeline as Pipeline<br/>(document/spreadsheet/image...)
+    participant Cleaner as processing/cleaner.py
+    participant Chunker as processing/chunker.py
+    participant Embedder as processing/embedder.py
+    participant HF as HuggingFace API<br/>(BAAI/bge-m3)
+    participant VStore as storage/vector_store.py
+    participant Qdrant as Qdrant Cloud
+
+    Backend->>API: POST /process { file, file_name, file_id, user_id }
+    API->>API: Save file to temp, detect extension
+    API->>Router: route_file(file_bytes, name, ext)
+    Router->>Pipeline: Extract text based on file type
+    
+    alt PDF File
+        Pipeline->>Pipeline: pdfplumber page-by-page extraction
+    else DOCX File
+        Pipeline->>Pipeline: python-docx paragraph extraction
+    else Image File
+        Pipeline->>Pipeline: Groq Vision API description
+    else Spreadsheet
+        Pipeline->>Pipeline: openpyxl cell-by-cell extraction
+    end
+    
+    Pipeline-->>Router: { text, source, metadata }
+    Router-->>API: Extracted text
+
+    API->>Cleaner: clean(text)
+    Cleaner-->>API: Normalized text
+
+    API->>Chunker: chunk(text, chunk_size=400, overlap=100)
+    Chunker-->>API: List of chunks with positions
+
+    loop For each batch of 16 chunks
+        API->>Embedder: embed(batch)
+        Embedder->>HF: POST feature-extraction (BAAI/bge-m3)
+        HF-->>Embedder: Token-level embeddings
+        Embedder->>Embedder: Mean pooling → 1024-dim vectors
+        Embedder-->>API: Batch embeddings
+    end
+
+    API->>VStore: upsert(chunks, vectors, metadata)
+    VStore->>Qdrant: Upsert points with payloads
+    Qdrant-->>VStore: Stored ✅
+    VStore-->>API: Success
+
+    API->>Backend: POST /api/ai/webhook { status: completed, chunkCount }
+```
+
+### Sequence Diagram: RAG Query Pipeline
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend as React Frontend<br/>(Ask AI Page)
+    participant Backend as Node.js Backend
+    participant API as FastAPI /query
+    participant Answerer as query/answerer.py
+    participant Embedder as processing/embedder.py
+    participant HF as HuggingFace API
+    participant VStore as storage/vector_store.py
+    participant Qdrant as Qdrant Cloud
+    participant Groq as Groq LLM<br/>(Llama 3.3 70B)
+
+    User->>Frontend: Types question in chat
+    Frontend->>Backend: POST /api/ai/query { question }
+    Backend->>Backend: Extract userId from JWT
+    Backend->>API: POST /query { question, user_id }
+    API->>Answerer: answer_question(question, user_id)
+
+    Note over Answerer,Qdrant: Phase 1 — Retrieval
+    Answerer->>Embedder: embed([question])
+    Embedder->>HF: POST feature-extraction (BAAI/bge-m3)
+    HF-->>Embedder: 1024-dim question vector
+    Embedder-->>Answerer: Question embedding
+
+    Answerer->>VStore: search(vector, user_id, top_k=5)
+    VStore->>Qdrant: Search with payload filter { user_id }
+    Qdrant-->>VStore: Top 5 matching chunks + scores
+    VStore-->>Answerer: Ranked results
+
+    Note over Answerer,Groq: Phase 2 — Augmented Generation
+    Answerer->>Answerer: Build system prompt with chunks as context
+    Answerer->>Groq: Chat completions API<br/>(system prompt + user question)
+    Groq-->>Answerer: Generated answer text
+
+    Answerer-->>API: { answer, sources: [{file_name, score}...] }
+    API-->>Backend: JSON response
+    Backend-->>Frontend: { answer, sources, chunks_found }
+    Frontend->>Frontend: Render markdown + source cards
+    Frontend-->>User: Display cited answer 📄
+```
+
+### Sequence Diagram: File Deletion (Cleanup)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend as React Frontend
+    participant Backend as Node.js Backend
+    participant S3 as AWS S3
+    participant MongoDB as MongoDB Atlas
+    participant AI as AI Microservice
+    participant Qdrant as Qdrant Cloud
+
+    User->>Frontend: Click delete on file card
+    Frontend->>Backend: DELETE /api/documents/:id
+    Backend->>S3: Delete file object
+    S3-->>Backend: Deleted ✅
+    Backend->>MongoDB: Delete document record
+    Note over Backend,MongoDB: Cascade: auto-delete share links
+    Backend->>AI: POST /delete-vectors { file_id }
+    AI->>Qdrant: Delete points where file_id matches
+    Qdrant-->>AI: Vectors removed ✅
+    AI-->>Backend: Success
+    Backend-->>Frontend: 200 OK
+    Frontend-->>User: File removed from vault
+```
 
 ---
 
