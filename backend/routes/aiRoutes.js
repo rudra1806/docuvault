@@ -34,4 +34,37 @@ router.delete("/vectors/:documentId", protect, deleteVectors);
 // GET    /api/ai/stats                — Get AI stats for current user
 router.get("/stats", protect, getAIStats);
 
+// GET    /api/ai/health               — Health check (no auth required)
+router.get("/health", async (req, res) => {
+  try {
+    const axios = require("axios");
+    const aiServiceUrl = process.env.AI_SERVICE_URL;
+    
+    if (!aiServiceUrl) {
+      return res.status(500).json({
+        status: "error",
+        message: "AI_SERVICE_URL not configured",
+      });
+    }
+
+    // Try to reach AI service (health endpoint is at root "/")
+    const response = await axios.get(`${aiServiceUrl}/`, { timeout: 5000 });
+    
+    res.json({
+      status: "healthy",
+      backend: "ok",
+      aiService: response.data,
+      aiServiceUrl: aiServiceUrl,
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "unhealthy",
+      backend: "ok",
+      aiService: "unreachable",
+      error: error.message,
+      aiServiceUrl: process.env.AI_SERVICE_URL,
+    });
+  }
+});
+
 module.exports = router;
