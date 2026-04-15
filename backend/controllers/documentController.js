@@ -8,6 +8,7 @@
 const Document = require("../models/Document");
 const { uploadToS3, deleteFromS3, streamFromS3, IMAGE_EXTENSIONS } = require("../config/s3");
 const logger = require("../config/logger");
+const { triggerProcessing } = require("./aiController");
 
 // MIME type lookup for the 18 supported file formats ONLY
 const MIME_TYPES = {
@@ -83,7 +84,7 @@ const uploadDocument = async (req, res) => {
 
     logger.logS3Operation("upload", uploadResult.key, true);
 
-    // Create a new document record in MongoDB
+    // Create a new document record in MongoDB (with AI status "processing")
     const document = await Document.create({
       fileName: uploadResult.fileName,
       s3Key: uploadResult.key,
@@ -91,6 +92,17 @@ const uploadDocument = async (req, res) => {
       fileSize: uploadResult.fileSize,
       resourceType: uploadResult.resourceType,
       userId: req.user._id,
+      aiStatus: "processing",
+    });
+
+    // Auto-trigger AI processing (fire-and-forget)
+    triggerProcessing(
+      document._id.toString(),
+      req.user._id.toString(),
+      uploadResult.fileName,
+      uploadResult.key
+    ).catch((err) => {
+      logger.error(`AI auto-processing failed for ${document._id}: ${err.message}`);
     });
 
     res.status(201).json({
@@ -259,6 +271,19 @@ const deleteDocument = async (req, res) => {
     const deletedShares = await SharedLink.deleteMany({ documentId: req.params.id });
     
     logger.info(`Cascade deleted ${deletedShares.deletedCount} share links for document ${req.params.id}`);
+
+    // CASCADE DELETE: Remove AI vectors from Qdrant
+    try {
+      const axios = require("axios");
+      const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+      await axios.post(`${AI_SERVICE_URL}/delete-vectors`, {
+        file_id: req.params.id,
+      }, { timeout: 10000 });
+      logger.info(`Cascade deleted AI vectors for document ${req.params.id}`);
+    } catch (aiErr) {
+      // Don't fail the delete if AI cleanup fails
+      logger.error(`Failed to delete AI vectors for ${req.params.id}: ${aiErr.message}`);
+    }
 
     // Remove the document record from MongoDB
     await Document.findByIdAndDelete(req.params.id);
