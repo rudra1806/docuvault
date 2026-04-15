@@ -53,6 +53,32 @@ const documentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+
+  // ── AI Processing Fields ──────────────────────────────
+  // Current AI processing status
+  aiStatus: {
+    type: String,
+    enum: ["pending", "processing", "completed", "failed", "skipped"],
+    default: "pending",
+  },
+
+  // Number of text chunks generated from this document
+  chunkCount: {
+    type: Number,
+    default: 0,
+  },
+
+  // Error message if AI processing failed
+  aiError: {
+    type: String,
+    default: null,
+  },
+
+  // Timestamp when AI processing completed
+  aiProcessedAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 // Create indexes for better query performance
