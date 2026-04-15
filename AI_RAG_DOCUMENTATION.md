@@ -184,7 +184,7 @@ The router automatically detects file type from the extension and dispatches to 
 | `xlsx`, `xls` | Spreadsheet | `openpyxl` — cell-by-cell with headers |
 | `csv` | Spreadsheet | `pandas` — DataFrame to text |
 | `pptx`, `ppt` | Presentation | `python-pptx` — slide text frames |
-| `jpg`, `png`, `gif`, `webp` | Image | Groq Vision API — image description |
+| `jpg`, `jpeg`, `png`, `gif`, `webp` | Image | Groq Vision API — image description |
 | `json` | Data | Pretty-printed JSON content |
 | `xml` | Data | `lxml` — text content extraction |
 | `zip`, `rar` | Archive | Lists contained file names |
@@ -299,7 +299,7 @@ All vector searches are filtered by `user_id`, ensuring users can only query the
 | **Documents** | PDF, DOCX, DOC, TXT | Direct text extraction | ⭐⭐⭐⭐⭐ |
 | **Spreadsheets** | XLSX, XLS, CSV | Cell-by-cell with headers | ⭐⭐⭐⭐ |
 | **Presentations** | PPTX, PPT | Slide text frames | ⭐⭐⭐⭐ |
-| **Images** | JPG, PNG, GIF, WebP | Groq Vision API description | ⭐⭐⭐ |
+| **Images** | JPG, JPEG, PNG, GIF, WebP | Groq Vision API description | ⭐⭐⭐ |
 | **Data** | JSON, XML | Structured text parsing | ⭐⭐⭐⭐ |
 | **Archives** | ZIP, RAR | File name listing only | ⭐⭐ |
 

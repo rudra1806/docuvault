@@ -5,8 +5,8 @@
 <h1 align="center">📄 DocuVault</h1>
 
 <p align="center">
-  <strong>Enterprise-Grade Cloud Document Management System</strong><br/>
-  Secure file storage, intelligent sharing, and comprehensive analytics — all in one platform.
+  <strong>Enterprise-Grade Cloud Document Management System with AI-Powered RAG</strong><br/>
+  Secure file storage, intelligent sharing, AI document Q&A using Retrieval-Augmented Generation, and comprehensive analytics — all in one platform.
 </p>
 
 <p align="center">
@@ -34,7 +34,9 @@
 
 ## 🌟 Overview
 
-**DocuVault** is a production-ready, full-stack document management system that combines secure cloud storage with intelligent file sharing capabilities. Built with modern technologies and enterprise-grade security, it provides a seamless experience for managing documents across teams and organizations.
+**DocuVault** is a production-ready, full-stack document management system with an **AI-powered Retrieval-Augmented Generation (RAG) pipeline**. It combines secure cloud storage, intelligent file sharing, and an AI document Q&A system that lets users ask natural language questions about their uploaded documents and receive cited answers.
+
+Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, DocuVault uses **HuggingFace BGE-M3 embeddings**, **Qdrant vector database**, and **Groq's Llama 3.3 70B LLM** to power its AI features — all on free API tiers.
 
 ### Key Highlights
 
@@ -79,7 +81,7 @@
 - **Drag & drop interface** with click-to-browse fallback
 - **Real-time progress tracking** with percentage indicator
 - **Multi-layer validation** — Client and server-side checks for type and size
-- **15+ supported formats** — PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, TXT, CSV, ZIP, RAR, JSON, XML, and more
+- **18 supported formats** — PDF, DOC, DOCX, TXT, XLS, XLSX, CSV, PPT, PPTX, JPG, JPEG, PNG, GIF, WEBP, JSON, XML, ZIP, RAR
 - **10 MB file size limit** (configurable)
 - **AWS S3 integration** — Reliable, cost-effective cloud storage
 - **Optimized queries** — Database indexes for lightning-fast searches
@@ -87,13 +89,13 @@
 ### 👁️ File Preview & Download
 
 - **In-app preview modal** — View files without downloading
-- **Image preview** — Inline rendering for JPG, PNG, GIF, WebP, SVG, BMP
+- **Image preview** — Inline rendering for JPG, JPEG, PNG, GIF, WebP
 - **PDF preview** — Browser's built-in PDF viewer integration
-- **Text & code preview** — Dark-themed syntax highlighting for TXT, CSV, JSON, XML, JS, CSS, HTML, MD
-- **Fallback handling** — Clear download option for unsupported types
+- **Text & data preview** — Dark-themed rendering for TXT, CSV, JSON, XML
+- **Fallback handling** — Clear download option for unsupported preview types (DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP, RAR)
 - **Keyboard shortcuts** — Press `Esc` to close preview
 - **Byte-perfect downloads** — Files streamed through backend, preserving original content
-- **Correct MIME types** — Proper Content-Disposition headers for all formats
+- **Correct MIME types** — Proper Content-Disposition headers for all 18 formats
 - **No CORS issues** — Backend streams files directly from S3
 
 ### 📊 Analytics & Monitoring
@@ -394,6 +396,10 @@ DocuVault/
 | `resourceType` | String | `"image"` or `"raw"` | - |
 | `userId` | ObjectId | Reference to uploading user | ✅ (compound) |
 | `uploadDate` | Date | Auto-generated timestamp | ✅ (compound) |
+| `aiStatus` | String | AI processing status: `pending`, `processing`, `completed`, `failed`, `skipped` | - |
+| `chunkCount` | Number | Number of AI text chunks generated | - |
+| `aiError` | String | Error message if AI processing failed | - |
+| `aiProcessedAt` | Date | Timestamp when AI processing completed | - |
 
 **Indexes:**
 - `{ userId: 1, uploadDate: -1 }` — Fast document listing sorted by date
@@ -480,6 +486,9 @@ NODE_ENV=development
 
 # Frontend URL for CORS
 FRONTEND_URL=http://localhost:5173
+
+# AI Service URL (for document Q&A feature)
+AI_SERVICE_URL=http://localhost:8000
 ```
 
 <details>
@@ -602,8 +611,10 @@ npm run test-cascade
 The application is specifically configured for a highly available AWS Architecture:
 - **Frontend**: AWS Amplify
 - **Backend**: AWS Elastic Beanstalk (Node.js)
+- **AI Service**: FastAPI (Python) — can be deployed on any Python-capable host (e.g., EC2, Railway, Render)
 - **Database**: MongoDB Atlas
 - **Storage**: Amazon S3
+- **Vector DB**: Qdrant Cloud (managed)
 - **Proxy/CDN**: AWS CloudFront (HTTPS)
 
 ### Backend Deployment (AWS Elastic Beanstalk)
@@ -649,6 +660,7 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 - [ ] Check MongoDB Atlas IP whitelist
 - [ ] Verify S3 uploads are working
 - [ ] Test file sharing with password protection
+- [ ] Test AI document processing and Q&A
 - [ ] Test on mobile devices
 - [ ] Set up SSL/TLS certificates (HTTPS)
 - [ ] Configure custom domain
@@ -708,6 +720,15 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 **Issue:** "CloudWatch logs not appearing"
 - **Solution:** Verify AWS credentials have `CloudWatchLogsFullAccess` policy. Check that `NODE_ENV=production` is set.
 
+**Issue:** "AI processing stuck at pending"
+- **Solution:** Ensure the AI service is running (`python main.py` in `ai-service/`). Check that `AI_SERVICE_URL=http://localhost:8000` is set in `backend/.env`.
+
+**Issue:** "AI answers are empty or say 'no documents found'"
+- **Solution:** Upload documents first and wait for AI processing to complete (status badge turns green). Previously uploaded documents need to be re-processed after model changes.
+
+**Issue:** "Groq model decommissioned / 400 Bad Request"
+- **Solution:** Groq rotates models frequently. Check [console.groq.com/docs/models](https://console.groq.com/docs/models) and update `LLM_MODEL` in `ai-service/.env`.
+
 ---
 
 ## 📊 Performance Optimization
@@ -719,6 +740,32 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 - **Lazy Loading** — Components loaded on demand
 - **Optimized Queries** — Mongoose lean queries where appropriate
 - **Connection Pooling** — MongoDB connection reuse
+- **AI Batch Processing** — Embeddings generated in batches of 16 with rate limiting
+- **Vector Indexing** — Qdrant payload indexes for fast filtered searches
+
+---
+
+## 🔮 Future Enhancements
+
+- [x] ~~AI-powered document Q&A~~ ✅ **Implemented!**
+- [ ] Folder organization and hierarchical structure
+- [ ] Bulk file upload with progress tracking
+- [ ] Advanced search with filters (date, type, size)
+- [ ] File versioning and history
+- [ ] Collaborative editing for documents
+- [ ] Real-time notifications
+- [ ] Two-factor authentication (2FA)
+- [ ] Role-based access control (RBAC)
+- [ ] API rate limiting
+- [ ] Automated testing (unit, integration, E2E)
+- [ ] Docker containerization
+- [ ] CI/CD pipeline
+- [ ] Multi-language support (i18n)
+- [ ] Dark/light theme toggle
+- [ ] File compression before upload
+- [ ] Virus scanning integration
+- [ ] Conversation history persistence for AI chat
+- [ ] Multi-document cross-referencing in AI answers
 
 ---
 
