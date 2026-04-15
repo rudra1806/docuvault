@@ -1,1 +1,30 @@
+# ── Dependencies ────────────────────────────────────────────
+node_modules/
+
+# ── Python Virtual Environments ─────────────────────────────
+.venv/
+venv/
+ai-service/venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Environment Variables ───────────────────────────────────
+.env
+!.env.example
+
+# ── Build / Dist ────────────────────────────────────────────
+dist/
+build/
 *.zip
+
+# ── OS / Editor ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+
+# ── Logs ────────────────────────────────────────────────────
+*.log
+npm-debug.log*

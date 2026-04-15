@@ -15,6 +15,11 @@
   <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/MongoDB_Atlas-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
   <br />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Groq_AI-000000?style=for-the-badge&logo=groq&logoColor=white" alt="Groq" />
+  <img src="https://img.shields.io/badge/HuggingFace-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="HuggingFace" />
+  <img src="https://img.shields.io/badge/Qdrant-DC382D?style=for-the-badge&logo=qdrant&logoColor=white" alt="Qdrant" />
+  <br />
   <img src="https://img.shields.io/badge/AWS_Amplify-FF9900?style=for-the-badge&logo=awsamplify&logoColor=white" alt="AWS Amplify" />
   <img src="https://img.shields.io/badge/Elastic_Beanstalk-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS EB" />
   <img src="https://img.shields.io/badge/Amazon_S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="AWS S3" />
@@ -36,6 +41,7 @@
 - 🔒 **Bank-Level Security** — JWT authentication, bcrypt encryption, and comprehensive access controls
 - ☁️ **AWS-Powered Storage** — Scalable S3 storage with CloudWatch monitoring
 - 🔗 **Smart Sharing** — Password-protected links with granular permissions and expiration controls
+- 🤖 **AI Document Q&A** — Ask questions about your documents using RAG (Retrieval-Augmented Generation)
 - 📊 **Analytics Dashboard** — Track access patterns, downloads, and user engagement
 - 🎨 **Modern UI/UX** — Responsive design with glassmorphism effects and smooth animations
 - ⚡ **High Performance** — Optimized database queries with strategic indexing
@@ -100,6 +106,20 @@
 - **Structured JSON logs** — Easy parsing and analysis
 - **Error tracking** — Comprehensive error logging with stack traces
 
+### 🤖 AI-Powered Document Q&A (RAG)
+
+> 📖 **[Full AI Documentation →](./AI_RAG_DOCUMENTATION.md)** — Detailed architecture, pipeline breakdown, models, API reference, setup guide, and troubleshooting.
+
+- **Automatic document processing** — Uploaded files are extracted, chunked, embedded, and stored in a vector database
+- **Natural language queries** — Ask questions about your documents in plain English
+- **Source citations** — Every answer includes references to the exact document chunks used
+- **Multi-format support** — PDFs, DOCX, spreadsheets, presentations, images, and more
+- **RAG pipeline** — Retrieval-Augmented Generation for accurate, grounded answers
+- **Per-user isolation** — Users can only query their own documents
+- **Real-time status** — Track document processing status on file cards
+- **Chat interface** — Beautiful chat UI with markdown rendering and suggested questions
+- **Powered by** — HuggingFace BGE-M3 embeddings, Groq Llama 3.3 70B LLM, Qdrant Cloud vector DB
+
 ### 🎨 User Interface
 
 - **Modern, responsive design** — Built with Tailwind CSS
@@ -127,16 +147,23 @@
                                                  │    (Node.js Backend)    │
                                                  └───────────┬─────────────┘
                                                              │
-                                     ┌───────────────────────┼───────────────────────┐
-                                     │                       │                       │
-                                     ▼                       ▼                       ▼
-                           ┌──────────────────┐      ┌──────────────┐      ┌──────────────┐
-                           │  MongoDB Atlas   │      │    AWS S3    │      │  CloudWatch  │
-                           │    (Metadata)    │      │    (Files)   │      │    (Logs)    │
-                           └──────────────────┘      └──────────────┘      └──────────────┘
+                          ┌──────────────────┬───────────────┼───────────────┬──────────────┐
+                          │                  │               │               │              │
+                          ▼                  ▼               ▼               ▼              ▼
+                ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐
+                │  MongoDB Atlas   │  │    AWS S3    │  │  CloudWatch  │  │   AI Service       │
+                │    (Metadata)    │  │    (Files)   │  │    (Logs)    │  │   (FastAPI/Python)  │
+                └──────────────────┘  └──────────────┘  └──────────────┘  └─────────┬──────────┘
+                                                                                    │
+                                                           ┌───────────────┬────────┘
+                                                           ▼               ▼
+                                                 ┌──────────────┐  ┌──────────────┐
+                                                 │ Qdrant Cloud │  │ HuggingFace  │
+                                                 │  (Vectors)   │  │ + Groq (LLM) │
+                                                 └──────────────┘  └──────────────┘
 ```
 
-**Four-tier cloud architecture**: Frontend Hosting (Amplify) → CDN/Proxy (CloudFront) → Application Layer (Beanstalk) → Data Layer (Atlas/S3)
+**Five-tier cloud architecture**: Frontend (Amplify) → CDN (CloudFront) → Backend (Beanstalk) → Data Layer (Atlas/S3) → AI Layer (FastAPI + Qdrant + Groq)
 
 ---
 
@@ -161,6 +188,18 @@
 | bcryptjs | 2.4.3 | Password hashing |
 | Multer | 1.4.5 | File upload handling |
 
+### AI Service
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Python | 3.9+ | AI Service runtime |
+| FastAPI | 0.115.0 | Async REST framework |
+| Groq SDK | 0.9.0 | Llama 3.3 70B LLM inference |
+| HuggingFace Hub | 1.8.0+ | BGE-M3 embedding generation |
+| Qdrant Client | 1.12.1 | Vector similarity search |
+| pdfplumber | 0.11.0 | PDF text extraction |
+| python-docx | 1.1.0 | DOCX parsing |
+| Pydantic Settings | 2.4.0 | Configuration management |
+
 ### Cloud Services
 | Service | Purpose |
 |---------|---------|
@@ -170,6 +209,9 @@
 | AWS S3 | Scalable object storage for documents |
 | AWS CloudWatch | Centralized logging and server monitoring |
 | MongoDB Atlas | Managed NoSQL database for application data |
+| Qdrant Cloud | Managed vector database for AI embeddings |
+| Groq Cloud | Ultra-fast LLM inference (free tier) |
+| HuggingFace | Embedding model API (free tier) |
 
 ### Security & Utilities
 | Technology | Purpose |
@@ -185,6 +227,34 @@
 
 ```
 DocuVault/
+├── ai-service/                      # 🤖 AI RAG Service (FastAPI/Python)
+│   ├── config/
+│   │   ├── settings.py              # Pydantic settings (env vars, models)
+│   │   └── qdrant_client.py         # Qdrant Cloud connection + indexes
+│   ├── pipelines/                   # File type → text extraction
+│   │   ├── router.py                # Routes files to correct pipeline
+│   │   ├── document.py              # PDF, DOCX, TXT extraction
+│   │   ├── spreadsheet.py           # XLSX, XLS, CSV extraction
+│   │   ├── presentation.py          # PPTX, PPT extraction
+│   │   ├── image.py                 # Image OCR via Groq Vision
+│   │   ├── data.py                  # JSON, XML parsing
+│   │   └── archive.py               # ZIP, RAR content listing
+│   ├── processing/                  # Text processing pipeline
+│   │   ├── cleaner.py               # Text normalization
+│   │   ├── chunker.py               # Token-based overlapping chunking
+│   │   └── embedder.py              # HuggingFace BGE-M3 embeddings
+│   ├── query/
+│   │   └── answerer.py              # RAG: embed → search → LLM answer
+│   ├── routes/
+│   │   ├── process.py               # POST /process endpoint
+│   │   ├── query.py                 # POST /query endpoint
+│   │   └── status.py                # Health & stats endpoints
+│   ├── storage/
+│   │   └── vector_store.py          # Qdrant CRUD operations
+│   ├── main.py                      # FastAPI entry point
+│   ├── requirements.txt             # Python dependencies
+│   └── .env.example                 # AI service env template
+│
 ├── backend/
 │   ├── .platform/
 │   │   └── nginx/
@@ -197,17 +267,19 @@ DocuVault/
 │   ├── controllers/
 │   │   ├── authController.js        # Register & Login handlers
 │   │   ├── documentController.js    # Upload, List, Download, Preview, Delete
-│   │   └── shareController.js       # Share link CRUD + access verification
+│   │   ├── shareController.js       # Share link CRUD + access verification
+│   │   └── aiController.js          # 🤖 AI processing & query proxy
 │   ├── middleware/
 │   │   └── auth.js                  # JWT verification middleware
 │   ├── models/
 │   │   ├── User.js                  # User schema with bcrypt hooks
-│   │   ├── Document.js              # Document metadata with indexes
+│   │   ├── Document.js              # Document metadata with AI status
 │   │   └── SharedLink.js            # Share link schema with analytics
 │   ├── routes/
 │   │   ├── authRoutes.js            # POST /api/auth/*
 │   │   ├── documentRoutes.js        # GET/POST/DELETE /api/documents/*
-│   │   └── shareRoutes.js           # GET/POST/DELETE/PATCH /api/share/*
+│   │   ├── shareRoutes.js           # GET/POST/DELETE/PATCH /api/share/*
+│   │   └── aiRoutes.js              # 🤖 POST/GET /api/ai/*
 │   ├── scripts/
 │   │   ├── clearDatabase.js         # Database cleanup utility
 │   │   └── testCascadeDelete.js     # Test cascade deletion feature
@@ -219,21 +291,25 @@ DocuVault/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Navbar.jsx              # Top navigation with auth state
-│   │   │   ├── FileCard.jsx            # Document card with actions
+│   │   │   ├── FileCard.jsx            # Document card with AI status badge
 │   │   │   ├── FilePreviewModal.jsx    # Full-screen file preview
 │   │   │   ├── SearchBar.jsx           # Debounced search (400ms)
 │   │   │   ├── ProtectedRoute.jsx      # Auth guard for routes
-│   │   │   └── ShareModal.jsx          # Share link creation modal
+│   │   │   ├── ShareModal.jsx          # Share link creation modal
+│   │   │   ├── AIStatusBadge.jsx       # 🤖 AI processing status badge
+│   │   │   ├── ChatMessage.jsx         # 🤖 Chat message bubble (user/AI)
+│   │   │   └── SourceCard.jsx          # 🤖 Source citation card
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx         # Global auth state management
 │   │   ├── pages/
 │   │   │   ├── LoginPage.jsx           # Sign in page
 │   │   │   ├── RegisterPage.jsx        # Create account page
-│   │   │   ├── DashboardPage.jsx       # Welcome + stats + recent docs
+│   │   │   ├── DashboardPage.jsx       # Welcome + stats + Ask AI card
 │   │   │   ├── UploadPage.jsx          # Drag & drop file upload
 │   │   │   ├── DocumentsPage.jsx       # Searchable document list
 │   │   │   ├── MySharesPage.jsx        # Share management dashboard
-│   │   │   └── SharedDocumentPage.jsx  # Public shared file viewer
+│   │   │   ├── SharedDocumentPage.jsx  # Public shared file viewer
+│   │   │   └── AskAIPage.jsx           # 🤖 AI Document Q&A chat
 │   │   ├── services/
 │   │   │   └── api.js                  # Axios instance + API functions
 │   │   ├── App.jsx                     # React Router setup
@@ -245,6 +321,7 @@ DocuVault/
 │   ├── vite.config.js
 │   └── package.json
 │
+├── AI_RAG_DOCUMENTATION.md          # 🤖 Detailed AI feature documentation
 └── README.md                        # This file
 ```
 
@@ -281,6 +358,17 @@ DocuVault/
 | POST | `/api/share/access/:token` | `{ password? }` | Verify access (with password) | ❌ |
 | GET | `/api/share/preview/:token` | - | Preview shared document | ❌ |
 | GET | `/api/share/download/:token` | - | Download shared document | ❌ |
+
+### AI Document Q&A Endpoints
+
+> 📖 See **[AI_RAG_DOCUMENTATION.md](./AI_RAG_DOCUMENTATION.md)** for full details.
+
+| Method | Endpoint | Body | Description | Auth Required |
+|--------|----------|------|-------------|---------------|
+| POST | `/api/ai/process/:documentId` | - | Trigger AI processing for a document | ✅ |
+| POST | `/api/ai/query` | `{ question }` | Ask a question about your documents | ✅ |
+| GET | `/api/ai/status/:fileId` | - | Get AI processing status | ✅ |
+| GET | `/api/ai/stats` | - | Get user's AI stats (chunk count) | ✅ |
 
 ---
 
@@ -339,6 +427,8 @@ DocuVault/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
+> 💡 For AI features, you also need Python 3.9+ and free API keys from Groq, HuggingFace, and Qdrant. See **[AI Setup Guide](./AI_RAG_DOCUMENTATION.md#-setup-guide)**.
 
 | Requirement | Version | Download |
 |-------------|---------|----------|
@@ -453,7 +543,21 @@ npm run dev
 
 > ✅ App running at `http://localhost:5173`
 
-#### 4. Test the Application
+#### 4. AI Service Setup (Optional)
+
+See the **[AI RAG Documentation](./AI_RAG_DOCUMENTATION.md#-setup-guide)** for detailed setup instructions.
+
+```bash
+cd ai-service
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # Add your Groq, HuggingFace, and Qdrant keys
+python main.py
+```
+
+> ✅ AI Service running at `http://localhost:8000`
+
+#### 5. Test the Application
 
 1. Open `http://localhost:5173` in your browser
 2. Click **Create account** and register
@@ -462,6 +566,7 @@ npm run dev
 5. Create a share link with password protection
 6. Open the share link in an incognito window
 7. View analytics in "My Shares" page
+8. Navigate to **"Ask AI"** and ask questions about your documents
 
 ---
 
@@ -483,12 +588,12 @@ npm run test-cascade
 
 | Category | Extensions | Preview Support |
 |----------|-----------|-----------------|
-| Documents | PDF, DOC, DOCX | ✅ PDF only |
-| Spreadsheets | XLS, XLSX, CSV | ✅ CSV only |
-| Presentations | PPT, PPTX | ❌ |
-| Images | JPG, JPEG, PNG, GIF, WebP, SVG, BMP | ✅ |
-| Text & Code | TXT, JSON, XML, HTML, CSS, JS, MD | ✅ |
-| Archives | ZIP, RAR | ❌ |
+| Documents | PDF, DOC, DOCX, TXT | ✅ PDF inline, TXT rendered |
+| Spreadsheets | XLS, XLSX, CSV | ✅ CSV rendered |
+| Presentations | PPT, PPTX | ❌ Download only |
+| Images | JPG, JPEG, PNG, GIF, WebP | ✅ All inline |
+| Data Files | JSON, XML | ✅ Rendered as text |
+| Archives | ZIP, RAR | ❌ Download only |
 
 ---
 
@@ -617,26 +722,6 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 
 ---
 
-## 🔮 Future Enhancements
-
-- [ ] Folder organization and hierarchical structure
-- [ ] Bulk file upload with progress tracking
-- [ ] Advanced search with filters (date, type, size)
-- [ ] File versioning and history
-- [ ] Collaborative editing for documents
-- [ ] Real-time notifications
-- [ ] Two-factor authentication (2FA)
-- [ ] Role-based access control (RBAC)
-- [ ] API rate limiting
-- [ ] Automated testing (unit, integration, E2E)
-- [ ] Docker containerization
-- [ ] CI/CD pipeline
-- [ ] Multi-language support (i18n)
-- [ ] Dark/light theme toggle
-- [ ] File compression before upload
-- [ ] Virus scanning integration
-
----
 
 ## 📄 License
 
