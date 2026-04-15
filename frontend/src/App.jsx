@@ -15,6 +15,7 @@ import UploadPage from "./pages/UploadPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import MySharesPage from "./pages/MySharesPage";
 import SharedDocumentPage from "./pages/SharedDocumentPage";
+import AskAIPage from "./pages/AskAIPage";
 
 function App() {
   return (
@@ -56,6 +57,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MySharesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ask-ai"
+            element={
+              <ProtectedRoute>
+                <AskAIPage />
               </ProtectedRoute>
             }
           />

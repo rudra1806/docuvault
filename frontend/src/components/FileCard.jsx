@@ -3,6 +3,7 @@
 // ============================================================
 
 import { useState } from "react";
+import AIStatusBadge from "./AIStatusBadge";
 
 const getFileIcon = (fileType) => {
   const type = fileType?.toLowerCase();
@@ -70,14 +71,21 @@ const FileCard = ({ document, onDownload, onDelete, onPreview, onShare }) => {
         {label}
       </div>
 
-      {/* ── File Info ──────────────────────────────────── */}
+      {/* ── File Info ────────────────────────────────────── */}
       <div className="flex-1 min-w-0">
         <h3 className="text-sm font-semibold text-muted-100 truncate group-hover:text-white transition-colors duration-300">
           {document.fileName}
         </h3>
-        <p className="text-xs text-muted-400 mt-0.5">
-          {formatDate(document.uploadDate)}
-        </p>
+        <div className="flex items-center gap-3 mt-0.5">
+          <p className="text-xs text-muted-400">
+            {formatDate(document.uploadDate)}
+          </p>
+          <AIStatusBadge
+            status={document.aiStatus}
+            documentId={document._id}
+            chunkCount={document.chunkCount}
+          />
+        </div>
       </div>
 
       {/* ── Actions ──────────────────────────────────────── */}

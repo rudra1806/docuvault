@@ -122,4 +122,37 @@ export const toggleShareLink = (shareId) => api.patch(`/share/${shareId}/toggle`
 export const verifyShareAccess = (token, password = "") =>
   axios.post(`${API_BASE_URL}/share/access/${token}`, { password });
 
+// ═══════════════════════════════════════════════════════════
+// AI API Functions
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Trigger AI processing for a specific document
+ */
+export const processDocument = (documentId) =>
+  api.post(`/ai/process/${documentId}`);
+
+/**
+ * Get AI processing status for a document
+ */
+export const getAIStatus = (documentId) =>
+  api.get(`/ai/status/${documentId}`);
+
+/**
+ * Ask a question about the user's documents
+ */
+export const askQuestion = (question) =>
+  api.post("/ai/query", { question });
+
+/**
+ * Get AI processing stats for the current user
+ */
+export const getAIStats = () => api.get("/ai/stats");
+
+/**
+ * Delete AI vectors for a specific document
+ */
+export const deleteAIVectors = (documentId) =>
+  api.delete(`/ai/vectors/${documentId}`);
+
 export default api;
