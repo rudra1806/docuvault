@@ -5,8 +5,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "../services/api";
 
-const TEXT_TYPES = ["txt", "csv", "json", "xml", "html", "css", "js", "md"];
-const IMAGE_TYPES = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"];
+const TEXT_TYPES = ["txt", "csv", "json", "xml"];
+const IMAGE_TYPES = ["jpg", "jpeg", "png", "gif", "webp"];
 const PDF_TYPES = ["pdf"];
 
 const getPreviewSrc = (docId) => {
@@ -33,10 +33,16 @@ function getTypeBadgeColor(type) {
       return "text-muted-300 bg-muted-500/20 border-muted-500/30";
     case "json":
     case "xml":
-    case "js":
-    case "css":
-    case "html":
       return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+    case "xls":
+    case "xlsx":
+      return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+    case "ppt":
+    case "pptx":
+      return "text-orange-400 bg-orange-500/10 border-orange-500/20";
+    case "zip":
+    case "rar":
+      return "text-violet-400 bg-violet-500/10 border-violet-500/20";
     default:
       return "text-primary-400 bg-primary-500/10 border-primary-500/20";
   }

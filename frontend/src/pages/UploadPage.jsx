@@ -46,7 +46,7 @@ const FILE_CATEGORIES = [
   },
   { 
     label: 'Images', 
-    exts: ['JPG', 'PNG', 'GIF', 'WEBP'],
+    exts: ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'],
     color: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
   },
   { 
