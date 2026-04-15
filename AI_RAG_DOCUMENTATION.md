@@ -1,6 +1,6 @@
-# 🤖 AI-Powered Document Q&A (RAG)
+# 🤖 AI-Powered Document Q&A (RAG Microservice)
 
-> **Retrieval-Augmented Generation** — Ask natural language questions about your uploaded documents and get AI-generated answers with source citations.
+> **Retrieval-Augmented Generation** — An independently deployable Python microservice that enables natural language questions about your uploaded documents and returns AI-generated answers with source citations.
 
 <p align="center">
   <img src="https://img.shields.io/badge/RAG-Retrieval_Augmented_Generation-8B5CF6?style=for-the-badge" alt="RAG" />
@@ -33,12 +33,19 @@
 
 ## 🌟 Overview
 
-The AI Document Q&A feature transforms DocuVault from a simple file storage system into an **intelligent document assistant**. Users can:
+The AI Document Q&A feature transforms DocuVault from a simple file storage system into an **intelligent document assistant**. It is implemented as an **independent microservice** — a separate FastAPI/Python application that communicates with the main Node.js backend via REST APIs. This microservice architecture allows:
+
+- 🛠️ **Independent deployment** — Different tech stack (Python) from the main backend (Node.js)
+- 📈 **Independent scaling** — Scale AI processing separately from file storage
+- 🔄 **Loose coupling** — Main app works fine without it; AI features gracefully degrade
+- 🗄️ **Own data store** — Uses Qdrant vector DB, separate from MongoDB
+
+### How Users Interact
 
 1. **Upload documents** (PDF, DOCX, spreadsheets, images, etc.)
 2. Documents are **automatically processed** — text is extracted, chunked, embedded, and stored in a vector database
 3. Users navigate to the **"Ask AI"** page and ask natural language questions
-4. The system **searches for relevant document chunks**, sends them to an LLM, and generates a **cited answer**
+4. The microservice **searches for relevant document chunks**, sends them to an LLM, and generates a **cited answer**
 
 This is powered by **Retrieval-Augmented Generation (RAG)** — a technique that combines vector search with large language models to provide accurate, grounded answers based on your actual documents.
 
@@ -123,7 +130,7 @@ This is powered by **Retrieval-Augmented Generation (RAG)** — a technique that
 
 ---
 
-## 📂 AI Service Structure
+## 📂 AI Microservice Structure
 
 ```
 ai-service/
@@ -263,7 +270,7 @@ All vector searches are filtered by `user_id`, ensuring users can only query the
 | **LLM** | `llama-3.3-70b-versatile` | Groq | 70B parameters, production-grade |
 | **Vision** | `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | Image understanding for uploads |
 
-### AI Service Tech Stack
+### AI Microservice Tech Stack
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -307,7 +314,7 @@ All vector searches are filtered by `user_id`, ensuring users can only query the
 
 ## 🔌 API Endpoints
 
-### AI Service (FastAPI — Port 8000)
+### AI Microservice (FastAPI — Port 8000)
 
 | Method | Endpoint | Description | Called By |
 |--------|----------|-------------|-----------|

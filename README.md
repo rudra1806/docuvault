@@ -165,7 +165,7 @@ Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, Doc
                                                  └──────────────┘  └──────────────┘
 ```
 
-**Five-tier cloud architecture**: Frontend (Amplify) → CDN (CloudFront) → Backend (Beanstalk) → Data Layer (Atlas/S3) → AI Layer (FastAPI + Qdrant + Groq)
+**Five-tier cloud architecture**: Frontend (Amplify) → CDN (CloudFront) → Backend (Beanstalk) → Data Layer (Atlas/S3) → AI Microservice (FastAPI + Qdrant + Groq)
 
 ---
 
@@ -190,10 +190,10 @@ Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, Doc
 | bcryptjs | 2.4.3 | Password hashing |
 | Multer | 1.4.5 | File upload handling |
 
-### AI Service
+### AI Microservice
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Python | 3.9+ | AI Service runtime |
+| Python | 3.9+ | Microservice runtime |
 | FastAPI | 0.115.0 | Async REST framework |
 | Groq SDK | 0.9.0 | Llama 3.3 70B LLM inference |
 | HuggingFace Hub | 1.8.0+ | BGE-M3 embedding generation |
@@ -229,7 +229,7 @@ Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, Doc
 
 ```
 DocuVault/
-├── ai-service/                      # 🤖 AI RAG Service (FastAPI/Python)
+├── ai-service/                      # 🤖 AI RAG Microservice (FastAPI/Python)
 │   ├── config/
 │   │   ├── settings.py              # Pydantic settings (env vars, models)
 │   │   └── qdrant_client.py         # Qdrant Cloud connection + indexes
@@ -552,7 +552,7 @@ npm run dev
 
 > ✅ App running at `http://localhost:5173`
 
-#### 4. AI Service Setup (Optional)
+#### 4. AI Microservice Setup (Optional)
 
 See the **[AI RAG Documentation](./AI_RAG_DOCUMENTATION.md#-setup-guide)** for detailed setup instructions.
 
@@ -564,7 +564,7 @@ cp .env.example .env   # Add your Groq, HuggingFace, and Qdrant keys
 python main.py
 ```
 
-> ✅ AI Service running at `http://localhost:8000`
+> ✅ AI Microservice running at `http://localhost:8000`
 
 #### 5. Test the Application
 
@@ -611,7 +611,7 @@ npm run test-cascade
 The application is specifically configured for a highly available AWS Architecture:
 - **Frontend**: AWS Amplify
 - **Backend**: AWS Elastic Beanstalk (Node.js)
-- **AI Service**: FastAPI (Python) — can be deployed on any Python-capable host (e.g., EC2, Railway, Render)
+- **AI Microservice**: FastAPI (Python) — independently deployable on any Python-capable host (e.g., EC2, Railway, Render)
 - **Database**: MongoDB Atlas
 - **Storage**: Amazon S3
 - **Vector DB**: Qdrant Cloud (managed)
