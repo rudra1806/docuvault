@@ -5,7 +5,7 @@
 <h1 align="center">📄 DocuVault</h1>
 
 <p align="center">
-  <strong>Enterprise-Grade Cloud Document Management System with AI-Powered RAG</strong><br/>
+  <strong>Cloud Document Management System with an AI-Powered RAG Pipeline</strong><br/>
   Secure file storage, intelligent sharing, AI document Q&A using Retrieval-Augmented Generation, and comprehensive analytics — all in one platform.
 </p>
 
@@ -28,7 +28,7 @@
   <br />
 <p align="center">
   <img src="https://img.shields.io/badge/JWT_Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
-  <img src="https://img.shields.io/badge/Status-Production_Ready-00C853?style=for-the-badge" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-Active-00C853?style=for-the-badge" alt="Status" />
 </p>
 
 <p align="center">
@@ -43,13 +43,13 @@
 
 ## 🌟 Overview
 
-**DocuVault** is a production-ready, full-stack document management system with an **AI-powered Retrieval-Augmented Generation (RAG) pipeline**. It combines secure cloud storage, intelligent file sharing, and an AI document Q&A system that lets users ask natural language questions about their uploaded documents and receive cited answers.
+**DocuVault** is a full-stack document management system with an **AI-powered Retrieval-Augmented Generation (RAG) pipeline**. It combines secure cloud storage, intelligent file sharing, and an AI document Q&A system that lets users ask natural language questions about their uploaded documents and receive cited answers.
 
-Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, DocuVault uses **HuggingFace BGE-M3 embeddings**, **Qdrant vector database**, and **Groq's Llama 3.3 70B LLM** to power its AI features — all on free API tiers.
+Built with React, Node.js, FastAPI, and a scalable AWS architecture, DocuVault uses **HuggingFace BGE-M3 embeddings**, **Qdrant vector database**, and **Groq's Llama 3.3 70B LLM** to power its AI features — all on free API tiers.
 
 ### Key Highlights
 
-- 🔒 **Bank-Level Security** — JWT authentication, bcrypt encryption, and comprehensive access controls
+- 🔒 **Robust Security** — JWT authentication, bcrypt encryption, and comprehensive access controls
 - ☁️ **AWS-Powered Storage** — Scalable S3 storage with CloudWatch monitoring
 - 🔗 **Smart Sharing** — Password-protected links with granular permissions and expiration controls
 - 🤖 **AI Document Q&A** — Ask questions about your documents using RAG (Retrieval-Augmented Generation)
@@ -93,7 +93,7 @@ Built with React, Node.js, FastAPI, and enterprise-grade AWS infrastructure, Doc
 - **18 supported formats** — PDF, DOC, DOCX, TXT, XLS, XLSX, CSV, PPT, PPTX, JPG, JPEG, PNG, GIF, WEBP, JSON, XML, ZIP, RAR
 - **10 MB file size limit** (configurable)
 - **AWS S3 integration** — Reliable, cost-effective cloud storage
-- **Optimized queries** — Database indexes for lightning-fast searches
+- **Optimized queries** — Database indexes for efficient searches
 
 ### 👁️ File Preview & Download
 
@@ -286,7 +286,7 @@ sequenceDiagram
 | AWS CloudWatch | Centralized logging and server monitoring |
 | MongoDB Atlas | Managed NoSQL database for application data |
 | Qdrant Cloud | Managed vector database for AI embeddings |
-| Groq Cloud | Ultra-fast LLM inference (free tier) |
+| Groq Cloud | LLM inference (free tier) |
 | HuggingFace | Embedding model API (free tier) |
 
 ### Security & Utilities

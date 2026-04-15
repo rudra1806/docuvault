@@ -408,7 +408,7 @@ All vector searches are filtered by `user_id`, ensuring users can only query the
 | Component | Model | Provider | Specs |
 |-----------|-------|----------|-------|
 | **Embeddings** | `BAAI/bge-m3` | HuggingFace | 1024 dimensions, multilingual |
-| **LLM** | `llama-3.3-70b-versatile` | Groq | 70B parameters, production-grade |
+| **LLM** | `llama-3.3-70b-versatile` | Groq | 70B parameters, high-performance |
 | **Vision** | `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | Image understanding for uploads |
 
 ### AI Microservice Tech Stack
