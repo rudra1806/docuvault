@@ -43,14 +43,31 @@
 
 ## 🌟 Overview
 
-**DocuVault** is a full-stack document management system with an **AI-powered Retrieval-Augmented Generation (RAG) pipeline**. It combines secure cloud storage, intelligent file sharing, and an AI document Q&A system that lets users ask natural language questions about their uploaded documents and receive cited answers.
+**DocuVault** is a full-stack document management system with an **AI-powered Retrieval-Augmented Generation (RAG) pipeline**, currently deployed on AWS infrastructure. It combines secure cloud storage, intelligent file sharing, and an AI document Q&A system that lets users ask natural language questions about their uploaded documents and receive cited answers.
 
-Built with React, Node.js, FastAPI, and a scalable AWS architecture, DocuVault uses **HuggingFace BGE-M3 embeddings**, **Qdrant vector database**, and **Groq's Llama 3.3 70B LLM** to power its AI features — all on free API tiers.
+Built with React, Node.js, FastAPI, and deployed on AWS with a microservices architecture, DocuVault uses **HuggingFace BGE-M3 embeddings**, **Qdrant vector database**, and **Groq's Llama 3.3 70B LLM** to power its AI features — all on free API tiers.
+
+### 🚀 Live Deployment
+
+The application is currently running in production on AWS:
+
+| Component | Service | Instance Type | Purpose |
+|-----------|---------|---------------|---------|
+| **Frontend** | AWS Amplify | Managed | React SPA with automatic CI/CD from Git |
+| **Backend API** | AWS Elastic Beanstalk | t3.micro | Node.js/Express REST API with auto-scaling |
+| **AI Microservice** | AWS EC2 (Ubuntu) | c7i-flex.large | Python/FastAPI RAG pipeline with systemd |
+| **CDN/Proxy** | AWS CloudFront | Distribution | HTTPS termination and CORS handling |
+| **Database** | MongoDB Atlas | M0 Free | Document metadata and user data |
+| **File Storage** | AWS S3 | Standard | Secure document file storage |
+| **Vector Database** | Qdrant Cloud | 1GB Free | AI embeddings for semantic search |
+| **Logging** | AWS CloudWatch | Standard | Centralized application logs |
+
+**Why CloudFront?** Amplify serves the frontend over HTTPS, but Elastic Beanstalk serves the backend over HTTP. Browsers block mixed content (HTTPS → HTTP), so CloudFront wraps the backend in HTTPS, enabling secure communication between frontend and backend.
 
 ### Key Highlights
 
 - 🔒 **Robust Security** — JWT authentication, bcrypt encryption, and comprehensive access controls
-- ☁️ **AWS-Powered Storage** — Scalable S3 storage with CloudWatch monitoring
+- ☁️ **AWS Production Infrastructure** — Scalable, monitored, and highly available
 - 🔗 **Smart Sharing** — Password-protected links with granular permissions and expiration controls
 - 🤖 **AI Document Q&A** — Ask questions about your documents using RAG (Retrieval-Augmented Generation)
 - 📊 **Analytics Dashboard** — Track access patterns, downloads, and user engagement
@@ -147,34 +164,83 @@ Built with React, Node.js, FastAPI, and a scalable AWS architecture, DocuVault u
 ## 🏗️ Architecture
 
 ```text
-┌─────────────────────┐       HTTPS / REST       ┌─────────────────────────┐
-│     AWS Amplify     │   ←──────────────────→   │     AWS CloudFront      │
-│  (React Frontend)   │                          │   (Security & Proxy)    │
-└─────────────────────┘                          └───────────┬─────────────┘
-                                                             │ 
-                                                             ▼ HTTP
-                                                 ┌─────────────────────────┐
-                                                 │  AWS Elastic Beanstalk  │
-                                                 │    (Node.js Backend)    │
-                                                 └───────────┬─────────────┘
-                                                             │
-                          ┌──────────────────┬───────────────┼───────────────┬──────────────┐
-                          │                  │               │               │              │
-                          ▼                  ▼               ▼               ▼              ▼
-                ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐
-                │  MongoDB Atlas   │  │    AWS S3    │  │  CloudWatch  │  │   AI Service       │
-                │    (Metadata)    │  │    (Files)   │  │    (Logs)    │  │   (FastAPI/Python)  │
-                └──────────────────┘  └──────────────┘  └──────────────┘  └─────────┬──────────┘
-                                                                                    │
-                                                           ┌───────────────┬────────┘
-                                                           ▼               ▼
-                                                 ┌──────────────┐  ┌──────────────┐
-                                                 │ Qdrant Cloud │  │ HuggingFace  │
-                                                 │  (Vectors)   │  │ + Groq (LLM) │
-                                                 └──────────────┘  └──────────────┘
+                                    ┌─────────────────────────┐
+                                    │      End Users          │
+                                    └───────────┬─────────────┘
+                                                │ HTTPS
+                                                ▼
+                                    ┌─────────────────────────┐
+                                    │     AWS Amplify         │
+                                    │   (React Frontend)      │
+                                    │    Auto-deploy on Git   │
+                                    └───────────┬─────────────┘
+                                                │ HTTPS
+                                                ▼
+                                    ┌─────────────────────────┐
+                                    │   AWS CloudFront        │
+                                    │   (CDN + HTTPS Proxy)   │
+                                    │    Solves Mixed Content │
+                                    └───────────┬─────────────┘
+                                                │ HTTPS → HTTP
+                                                ▼
+                                    ┌─────────────────────────┐
+                                    │ AWS Elastic Beanstalk   │
+                                    │   (Node.js Backend)     │
+                                    │      t3.micro           │
+                                    └───────────┬─────────────┘
+                                                │
+                    ┌───────────────┬───────────┼───────────┬────────────┐
+                    │               │           │           │            │
+                    ▼               ▼           ▼           ▼            ▼
+          ┌──────────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐
+          │ MongoDB      │  │  AWS S3  │  │CloudWatch│  │   AWS EC2        │
+          │ Atlas (M0)   │  │ (Files)  │  │  (Logs)  │  │ (AI Service)     │
+          │              │  │  20GB    │  │  JSON    │  │  c7i-flex.large  │
+          └──────────────┘  └──────────┘  └──────────┘  └─────────┬────────┘
+                                                                  │ HTTP
+                                                    ┌─────────────┼──────────┐
+                                                    ▼             ▼          ▼
+                                          ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+                                          │ Qdrant Cloud │  │ HuggingFace  │  │     Groq     │
+                                          │  (Vectors)   │  │   (Embed)    │  │    (LLM)     │
+                                          └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
-**Five-tier cloud architecture**: Frontend (Amplify) → CDN (CloudFront) → Backend (Beanstalk) → Data Layer (Atlas/S3) → AI Microservice (FastAPI + Qdrant + Groq)
+### 🔄 Request Flow
+
+**User Upload & AI Processing:**
+```
+User → Amplify (HTTPS) → CloudFront (HTTPS) → Elastic Beanstalk (HTTP) 
+→ S3 (file) + MongoDB (metadata) → EC2 AI Service (HTTP) 
+→ HuggingFace (embeddings) → Qdrant (vectors) → Webhook back to Backend
+```
+
+**AI Query:**
+```
+User → Amplify → CloudFront → Elastic Beanstalk → EC2 AI Service 
+→ HuggingFace (embed question) → Qdrant (search) → Groq (LLM) → Response
+```
+
+### 🎯 Architecture Decisions
+
+**Why CloudFront?**
+- Amplify enforces HTTPS for security
+- Elastic Beanstalk runs on HTTP (standard for internal AWS services)
+- Browsers block mixed content (HTTPS page calling HTTP API)
+- CloudFront acts as HTTPS proxy, wrapping backend in secure layer
+
+**Why Separate AI Service on EC2?**
+- Different runtime (Python vs Node.js)
+- CPU-intensive AI processing isolated from main API
+- Independent scaling and deployment
+- c7i-flex.large provides 2 vCPU and 4GB RAM for AI workloads
+- Systemd service ensures auto-restart and boot persistence
+
+**Why Microservices Architecture?**
+- Frontend, Backend, and AI can scale independently
+- Technology flexibility (React, Node.js, Python)
+- Fault isolation (AI service crash doesn't affect file uploads)
+- Easy to upgrade or replace individual components
 
 ### 📤 Sequence Diagram: Document Upload & AI Processing
 
