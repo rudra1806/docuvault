@@ -127,7 +127,7 @@ Built with React, Node.js, FastAPI, and a scalable AWS architecture, DocuVault u
 - **Multi-format support** — PDFs, DOCX, spreadsheets, presentations, images, and more
 - **RAG pipeline** — Retrieval-Augmented Generation for accurate, grounded answers
 - **Per-user isolation** — Users can only query their own documents
-- **Real-time status** — Track document processing status on file cards
+- **Real-time status** — Auto-polling tracks document processing status on file cards (updates every 5s)
 - **Chat interface** — Beautiful chat UI with markdown rendering and suggested questions
 - **Powered by** — HuggingFace BGE-M3 embeddings, Groq Llama 3.3 70B LLM, Qdrant Cloud vector DB
 
@@ -797,6 +797,9 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 **Issue:** "AI processing stuck at pending"
 - **Solution:** Ensure the AI service is running (`python main.py` in `ai-service/`). Check that `AI_SERVICE_URL=http://localhost:8000` is set in `backend/.env`.
 
+**Issue:** "AI processing stuck on Processing in production (AWS deployment)"
+- **Solution:** The AI service's `NODE_BACKEND_URL` must include the `http://` protocol prefix. Check `ai-service/.env` on EC2 — it should be `NODE_BACKEND_URL=http://your-backend-url.elasticbeanstalk.com`, not just the bare domain. Without the protocol, the webhook callback from the AI service to the backend silently fails, so the status is never updated from "processing" to "completed".
+
 **Issue:** "AI answers are empty or say 'no documents found'"
 - **Solution:** Upload documents first and wait for AI processing to complete (status badge turns green). Previously uploaded documents need to be re-processed after model changes.
 
@@ -810,6 +813,7 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 - **Database Indexes** — Strategic indexes on frequently queried fields
 - **Memory-Efficient Logging** — Access logs limited to last 50 entries
 - **Debounced Search** — 400ms delay to reduce unnecessary API calls
+- **Smart Status Polling** — Auto-polls only when documents are processing, stops when idle
 - **Streaming Downloads** — Files streamed directly from S3 to client
 - **Lazy Loading** — Components loaded on demand
 - **Optimized Queries** — Mongoose lean queries where appropriate

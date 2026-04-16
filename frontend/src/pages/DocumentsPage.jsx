@@ -2,7 +2,7 @@
 // pages/DocumentsPage.jsx — Document List (Midnight Vault)
 // ============================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { getDocuments, downloadDocument, deleteDocument } from "../services/api";
 import Navbar from "../components/Navbar";
@@ -11,16 +11,48 @@ import SearchBar from "../components/SearchBar";
 import FilePreviewModal from "../components/FilePreviewModal";
 import ShareModal from "../components/ShareModal";
 
+const POLL_INTERVAL = 5000; // Poll every 5 seconds when documents are processing
+
 const DocumentsPage = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [previewDoc, setPreviewDoc] = useState(null);
   const [shareDoc, setShareDoc] = useState(null);
+  const pollTimerRef = useRef(null);
 
   useEffect(() => {
     fetchDocuments(searchTerm);
   }, [searchTerm]);
+
+  // Poll for status updates when any document is processing
+  useEffect(() => {
+    const hasProcessing = documents.some((doc) => doc.aiStatus === "processing");
+
+    // Clear any existing timer
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
+    if (hasProcessing) {
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const response = await getDocuments(searchTerm);
+          setDocuments(response.data.documents);
+        } catch (error) {
+          console.error("Polling error:", error);
+        }
+      }, POLL_INTERVAL);
+    }
+
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [documents, searchTerm]);
 
   const fetchDocuments = async (search = "") => {
     setLoading(true);

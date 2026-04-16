@@ -4,7 +4,7 @@
 // Small badge showing AI processing status on document cards.
 // ============================================================
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { processDocument } from "../services/api";
 
 const STATUS_CONFIG = {
@@ -42,7 +42,19 @@ const STATUS_CONFIG = {
 
 const AIStatusBadge = ({ status = "pending", documentId, chunkCount = 0 }) => {
   const [retrying, setRetrying] = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const prevStatusRef = useRef(status);
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+
+  // Detect transition from "processing" → "completed" and flash highlight
+  useEffect(() => {
+    if (prevStatusRef.current === "processing" && status === "completed") {
+      setJustCompleted(true);
+      const timer = setTimeout(() => setJustCompleted(false), 2500);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = status;
+  }, [status]);
 
   const handleRetry = async (e) => {
     e.stopPropagation();
@@ -59,12 +71,14 @@ const AIStatusBadge = ({ status = "pending", documentId, chunkCount = 0 }) => {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className={`flex items-center gap-1.5 transition-all duration-500 ${
+      justCompleted ? "bg-accent-emerald/10 px-2 py-0.5 rounded-full" : ""
+    }`}>
       {/* Status dot */}
       <div
         className={`w-1.5 h-1.5 rounded-full ${config.dotClass} ${
           config.animate ? "animate-pulse" : ""
-        }`}
+        } ${justCompleted ? "scale-150" : ""} transition-transform duration-300`}
       />
 
       {/* Status text */}
