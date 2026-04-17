@@ -123,4 +123,28 @@ logger.logAuth = (action, email, success = true, reason = null) => {
   logger.info("Authentication Event", log);
 };
 
+// Log AI service communication events
+logger.logAI = (action, details = {}) => {
+  logger.info("AI Service Event", {
+    action,
+    ...details,
+  });
+};
+
+// Log performance timing events
+logger.logPerformance = (operation, durationMs, details = {}) => {
+  const level = durationMs > 5000 ? "warn" : "info";
+  logger[level]("Performance", {
+    operation,
+    durationMs: Math.round(durationMs),
+    ...details,
+  });
+};
+
+// Create a child logger with additional default metadata
+// Useful for attaching correlation IDs per-request
+logger.createChild = (meta = {}) => {
+  return logger.child(meta);
+};
+
 module.exports = logger;

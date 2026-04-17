@@ -8,6 +8,7 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
 const { upload } = require("../config/s3");
+const { uploadLimiter } = require("../middleware/rateLimiter");
 const {
   uploadDocument,
   getDocuments,
@@ -16,8 +17,8 @@ const {
   deleteDocument,
 } = require("../controllers/documentController");
 
-// POST   /api/documents/upload       — Upload a document
-router.post("/upload", protect, upload.single("file"), uploadDocument);
+// POST   /api/documents/upload       — Upload a document (rate limited)
+router.post("/upload", protect, uploadLimiter, upload.single("file"), uploadDocument);
 
 // GET    /api/documents              — List all documents (with optional ?search=)
 router.get("/", protect, getDocuments);

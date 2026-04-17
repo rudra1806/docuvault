@@ -10,13 +10,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.settings import get_settings
 from routes import process, query, status
+from routes import health as health_routes
+from utils.logger import setup_structured_logging, CorrelationIdMiddleware
 
-# ── Logging Setup ───────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# ── Structured Logging Setup ────────────────────────────────
+setup_structured_logging(level="INFO")
 logger = logging.getLogger(__name__)
 
 # ── Initialize FastAPI App ──────────────────────────────────
@@ -25,6 +23,10 @@ app = FastAPI(
     description="AI-powered document processing and Q&A for DocuVault",
     version="1.0.0",
 )
+
+# ── Correlation ID Middleware ───────────────────────────────
+# Must be added before CORS to ensure it wraps all requests
+app.add_middleware(CorrelationIdMiddleware)
 
 # ── CORS Middleware ─────────────────────────────────────────
 settings = get_settings()
@@ -42,6 +44,7 @@ app.add_middleware(
 )
 
 # ── Mount Routes ────────────────────────────────────────────
+app.include_router(health_routes.router, tags=["Health"])
 app.include_router(process.router, tags=["Processing"])
 app.include_router(query.router, tags=["Query"])
 app.include_router(status.router, tags=["Status"])
@@ -50,7 +53,7 @@ app.include_router(status.router, tags=["Status"])
 # ── Health Check ────────────────────────────────────────────
 @app.get("/")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint (backward compatibility)."""
     return {
         "success": True,
         "service": "DocuVault AI Service",

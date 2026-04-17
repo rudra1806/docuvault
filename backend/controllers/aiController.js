@@ -70,11 +70,16 @@ const processDocument = async (req, res) => {
     await axios.post(`${AI_SERVICE_URL}/process`, formData, {
       headers: {
         ...formData.getHeaders(),
+        "x-correlation-id": req.correlationId || "",
       },
       timeout: 30000, // 30 second timeout for initial request
     });
 
-    logger.info(`AI processing triggered for document ${document._id}`);
+    logger.logAI("process_triggered", {
+      documentId: document._id.toString(),
+      fileName: document.fileName,
+      correlationId: req.correlationId,
+    });
 
     res.status(200).json({
       success: true,
@@ -207,6 +212,9 @@ const queryDocuments = async (req, res) => {
       },
       {
         timeout: 60000, // 60 second timeout for query
+        headers: {
+          "x-correlation-id": req.correlationId || "",
+        },
       }
     );
 

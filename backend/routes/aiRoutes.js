@@ -7,6 +7,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
+const { aiQueryLimiter, aiProcessLimiter } = require("../middleware/rateLimiter");
 const {
   processDocument,
   processingWebhook,
@@ -16,8 +17,8 @@ const {
   getAIStats,
 } = require("../controllers/aiController");
 
-// POST   /api/ai/process/:documentId  — Trigger AI processing
-router.post("/process/:documentId", protect, processDocument);
+// POST   /api/ai/process/:documentId  — Trigger AI processing (rate limited)
+router.post("/process/:documentId", protect, aiProcessLimiter, processDocument);
 
 // POST   /api/ai/webhook              — Processing completion webhook (from Python service)
 router.post("/webhook", processingWebhook);
@@ -25,8 +26,8 @@ router.post("/webhook", processingWebhook);
 // GET    /api/ai/status/:documentId   — Get processing status
 router.get("/status/:documentId", protect, getProcessingStatus);
 
-// POST   /api/ai/query                — Ask a question
-router.post("/query", protect, queryDocuments);
+// POST   /api/ai/query                — Ask a question (rate limited)
+router.post("/query", protect, aiQueryLimiter, queryDocuments);
 
 // DELETE /api/ai/vectors/:documentId  — Delete vectors for a document
 router.delete("/vectors/:documentId", protect, deleteVectors);
