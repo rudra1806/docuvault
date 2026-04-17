@@ -2,7 +2,7 @@
 // server.js — Express Application Entry Point
 // ============================================================
 // Sets up Express, connects to MongoDB, mounts routes,
-// and starts listening for requests.
+// starts workers, and handles graceful shutdown.
 // ============================================================
 
 const express = require("express");
@@ -23,6 +23,14 @@ const documentRoutes = require("./routes/documentRoutes");
 const shareRoutes = require("./routes/shareRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const healthRoutes = require("./routes/healthRoutes");
+const queueRoutes = require("./routes/queueRoutes");
+
+// Import workers
+const { startAIProcessingWorker } = require("./workers/aiProcessingWorker");
+const { startVectorCleanupWorker } = require("./workers/vectorCleanupWorker");
+
+// Import Redis for graceful shutdown
+const { closeRedisConnection } = require("./config/redis");
 
 // Initialize Express app
 const app = express();
@@ -50,6 +58,7 @@ app.use("/api", generalLimiter);
 
 // ── API Routes ─────────────────────────────────────────────
 app.use("/api/health", healthRoutes);
+app.use("/api/admin", queueRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/share", shareRoutes);
@@ -74,9 +83,45 @@ app.use((err, req, res, next) => {
 
 // ── Start Server ───────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
+let aiWorker = null;
+let cleanupWorker = null;
 
 connectDB().then(() => {
+  // Start BullMQ workers after DB connection
+  try {
+    aiWorker = startAIProcessingWorker();
+    cleanupWorker = startVectorCleanupWorker();
+    logger.info("BullMQ workers started successfully");
+  } catch (err) {
+    logger.error("Failed to start BullMQ workers:", { error: err.message });
+    logger.warn("Server will run but queue processing will be disabled");
+  }
+
   app.listen(PORT, () => {
     logger.info(`Server running on http://localhost:${PORT}`);
   });
 });
+
+// ── Graceful Shutdown ──────────────────────────────────────
+const gracefulShutdown = async (signal) => {
+  logger.info(`${signal} received — shutting down gracefully...`);
+
+  // Close workers first (stop picking up new jobs)
+  if (aiWorker) {
+    await aiWorker.close();
+    logger.info("AI Processing Worker closed");
+  }
+  if (cleanupWorker) {
+    await cleanupWorker.close();
+    logger.info("Vector Cleanup Worker closed");
+  }
+
+  // Close Redis connection
+  await closeRedisConnection();
+
+  logger.info("Graceful shutdown complete");
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

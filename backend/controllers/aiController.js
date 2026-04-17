@@ -7,13 +7,13 @@
 
 const axios = require("axios");
 const Document = require("../models/Document");
-const { streamFromS3 } = require("../config/s3");
 const logger = require("../config/logger");
+const { addAIProcessingJob } = require("../queues/aiProcessingQueue");
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 
 // ── POST /api/ai/process/:documentId ───────────────────────
-// Trigger AI processing for a specific document
+// Trigger AI processing for a specific document (via queue)
 const processDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.documentId);
@@ -46,44 +46,18 @@ const processDocument = async (req, res) => {
     document.aiError = null;
     await document.save();
 
-    // Download file from S3
-    const { stream, contentType } = await streamFromS3(document.s3Key);
-
-    // Collect stream into buffer
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    const fileBuffer = Buffer.concat(chunks);
-
-    // Send to Python AI service
-    const FormData = require("form-data");
-    const formData = new FormData();
-    formData.append("file", fileBuffer, {
-      filename: document.fileName,
-      contentType: contentType || "application/octet-stream",
-    });
-    formData.append("file_id", document._id.toString());
-    formData.append("user_id", document.userId.toString());
-    formData.append("file_name", document.fileName);
-
-    await axios.post(`${AI_SERVICE_URL}/process`, formData, {
-      headers: {
-        ...formData.getHeaders(),
-        "x-correlation-id": req.correlationId || "",
-      },
-      timeout: 30000, // 30 second timeout for initial request
-    });
-
-    logger.logAI("process_triggered", {
+    // Queue the job (worker handles S3 download + AI service call)
+    await addAIProcessingJob({
       documentId: document._id.toString(),
+      userId: document.userId.toString(),
       fileName: document.fileName,
+      s3Key: document.s3Key,
       correlationId: req.correlationId,
     });
 
     res.status(200).json({
       success: true,
-      message: "AI processing started",
+      message: "AI processing queued",
       documentId: document._id,
       aiStatus: "processing",
     });
@@ -102,7 +76,7 @@ const processDocument = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Failed to start AI processing",
+      message: "Failed to queue AI processing",
       error: error.message,
     });
   }
@@ -324,49 +298,6 @@ const getAIStats = async (req, res) => {
   }
 };
 
-// ── Helper: Trigger processing for a document ──────────────
-// Called internally after file upload (fire-and-forget)
-const triggerProcessing = async (documentId, userId, fileName, s3Key) => {
-  try {
-    // Download file from S3
-    const { stream, contentType } = await streamFromS3(s3Key);
-    const chunks = [];
-    for await (const chunk of stream) {
-      chunks.push(chunk);
-    }
-    const fileBuffer = Buffer.concat(chunks);
-
-    // Send to Python AI service
-    const FormData = require("form-data");
-    const formData = new FormData();
-    formData.append("file", fileBuffer, {
-      filename: fileName,
-      contentType: contentType || "application/octet-stream",
-    });
-    formData.append("file_id", documentId);
-    formData.append("user_id", userId);
-    formData.append("file_name", fileName);
-
-    await axios.post(`${AI_SERVICE_URL}/process`, formData, {
-      headers: formData.getHeaders(),
-      timeout: 30000,
-    });
-
-    logger.info(`Auto-triggered AI processing for ${documentId}`);
-  } catch (error) {
-    logger.error(`Auto-processing failed for ${documentId}: ${error.message}`);
-    // Update status to failed
-    try {
-      await Document.findByIdAndUpdate(documentId, {
-        aiStatus: "failed",
-        aiError: `Auto-processing failed: ${error.message}`,
-      });
-    } catch (updateErr) {
-      logger.error("Failed to update AI status:", updateErr.message);
-    }
-  }
-};
-
 module.exports = {
   processDocument,
   processingWebhook,
@@ -374,5 +305,4 @@ module.exports = {
   queryDocuments,
   deleteVectors,
   getAIStats,
-  triggerProcessing,
 };

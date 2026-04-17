@@ -8,7 +8,8 @@
 const Document = require("../models/Document");
 const { uploadToS3, deleteFromS3, streamFromS3, IMAGE_EXTENSIONS } = require("../config/s3");
 const logger = require("../config/logger");
-const { triggerProcessing } = require("./aiController");
+const { addAIProcessingJob } = require("../queues/aiProcessingQueue");
+const { addVectorCleanupJob } = require("../queues/vectorCleanupQueue");
 
 // MIME type lookup for the 18 supported file formats ONLY
 const MIME_TYPES = {
@@ -95,15 +96,18 @@ const uploadDocument = async (req, res) => {
       aiStatus: "processing",
     });
 
-    // Auto-trigger AI processing (fire-and-forget)
-    triggerProcessing(
-      document._id.toString(),
-      req.user._id.toString(),
-      uploadResult.fileName,
-      uploadResult.key
-    ).catch((err) => {
-      logger.error(`AI auto-processing failed for ${document._id}: ${err.message}`);
-    });
+    // Queue AI processing job (persistent, retryable)
+    try {
+      await addAIProcessingJob({
+        documentId: document._id.toString(),
+        userId: req.user._id.toString(),
+        fileName: uploadResult.fileName,
+        s3Key: uploadResult.key,
+        correlationId: req.correlationId,
+      });
+    } catch (queueErr) {
+      logger.error(`Failed to queue AI processing for ${document._id}: ${queueErr.message}`);
+    }
 
     res.status(201).json({
       success: true,
@@ -272,17 +276,15 @@ const deleteDocument = async (req, res) => {
     
     logger.info(`Cascade deleted ${deletedShares.deletedCount} share links for document ${req.params.id}`);
 
-    // CASCADE DELETE: Remove AI vectors from Qdrant
+    // CASCADE DELETE: Queue AI vector cleanup (reliable with retry)
     try {
-      const axios = require("axios");
-      const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
-      await axios.post(`${AI_SERVICE_URL}/delete-vectors`, {
-        file_id: req.params.id,
-      }, { timeout: 10000 });
-      logger.info(`Cascade deleted AI vectors for document ${req.params.id}`);
-    } catch (aiErr) {
-      // Don't fail the delete if AI cleanup fails
-      logger.error(`Failed to delete AI vectors for ${req.params.id}: ${aiErr.message}`);
+      await addVectorCleanupJob({
+        documentId: req.params.id,
+        correlationId: req.correlationId,
+      });
+      logger.info(`Queued vector cleanup for document ${req.params.id}`);
+    } catch (queueErr) {
+      logger.error(`Failed to queue vector cleanup for ${req.params.id}: ${queueErr.message}`);
     }
 
     // Remove the document record from MongoDB

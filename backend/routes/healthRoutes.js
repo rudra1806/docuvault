@@ -11,6 +11,7 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const { S3Client, HeadBucketCommand } = require("@aws-sdk/client-s3");
 const logger = require("../config/logger");
+const { getRedisConnection } = require("../config/redis");
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
@@ -89,6 +90,24 @@ const checkAIService = async () => {
   }
 };
 
+// ── Helper: Check Redis health ─────────────────────────────
+const checkRedis = () => {
+  try {
+    const redis = getRedisConnection();
+    const status = redis.status; // "ready", "connecting", "end", etc.
+
+    return {
+      status: status === "ready" ? "healthy" : "unhealthy",
+      state: status,
+    };
+  } catch (error) {
+    return {
+      status: "unhealthy",
+      error: error.message,
+    };
+  }
+};
+
 // ── GET /api/health — Full system health ───────────────────
 router.get("/", async (req, res) => {
   const startTime = Date.now();
@@ -101,9 +120,12 @@ router.get("/", async (req, res) => {
       checkAIService(),
     ]);
 
+    const redisHealth = checkRedis();
+
     const isHealthy =
       mongoHealth.status === "healthy" &&
-      s3Health.status === "healthy";
+      s3Health.status === "healthy" &&
+      redisHealth.status === "healthy";
 
     // AI service being down degrades the system but doesn't make it unhealthy
     const overallStatus = !isHealthy
@@ -122,6 +144,7 @@ router.get("/", async (req, res) => {
       dependencies: {
         mongodb: mongoHealth,
         s3: s3Health,
+        redis: redisHealth,
         aiService: aiHealth,
       },
       system: {
@@ -167,7 +190,8 @@ router.get("/live", (req, res) => {
 // Used by load balancers to remove unhealthy instances from rotation.
 router.get("/ready", (req, res) => {
   const mongoState = mongoose.connection.readyState;
-  const isReady = mongoState === 1;
+  const redisHealth = checkRedis();
+  const isReady = mongoState === 1 && redisHealth.status === "healthy";
 
   const statusCode = isReady ? 200 : 503;
 
@@ -177,6 +201,7 @@ router.get("/ready", (req, res) => {
     timestamp: new Date().toISOString(),
     checks: {
       mongodb: mongoState === 1 ? "connected" : "disconnected",
+      redis: redisHealth.status === "healthy" ? "connected" : "disconnected",
     },
   });
 });
