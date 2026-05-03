@@ -79,13 +79,12 @@ This is powered by **Retrieval-Augmented Generation (RAG)** — a technique that
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                          QUESTION ANSWERING (Query)                          │
+│                    QUESTION ANSWERING (Enhanced 7-Phase RAG)                  │
 │                                                                              │
-│  User Question ──→ Embed Question ──→ Search Qdrant ──→ Get Top Chunks ──→  │
-│                                                               │              │
-│                              ┌────────────────────────────────┘              │
-│                              ▼                                               │
-│              Build Prompt (Question + Chunks) ──→ Groq LLM ──→ Answer       │
+│  User Question ──→ Analyze & Decompose ──→ Hybrid Search (Vector + BM25)    │
+│       ──→ Re-Rank (LLM) ──→ Build Context (dedup, group, budget)            │
+│       ──→ Generate Answer (dynamic prompt) ──→ Validate (self-reflection)   │
+│       ──→ Store Turn (conversation memory) ──→ Return Answer + Sources      │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,15 +100,17 @@ This is powered by **Retrieval-Augmented Generation (RAG)** — a technique that
 | 4. **Embed** | `processing/embedder.py` | Generate 1024-dimensional vectors using HuggingFace `BAAI/bge-m3` model |
 | 5. **Store** | `storage/vector_store.py` | Upsert vectors into Qdrant Cloud with metadata (file ID, user ID, chunk text) |
 
-#### Query Phase (When a user asks a question)
+#### Query Phase (Enhanced 7-Phase Pipeline)
 
-| Step | Component | Description |
-|------|-----------|-------------|
-| 1. **Embed Query** | `processing/embedder.py` | Convert the user's question into a 1024-dim vector |
-| 2. **Search** | `storage/vector_store.py` | Find top 5 most similar chunks in Qdrant (filtered by user ID) |
-| 3. **Build Prompt** | `query/answerer.py` | Construct a system prompt with the retrieved chunks as context |
-| 4. **Generate** | `query/answerer.py` | Send to Groq LLM (`llama-3.3-70b-versatile`) and get the answer |
-| 5. **Return** | `routes/query.py` | Return answer + source citations (file names, relevance scores) |
+| Phase | Component | Description |
+|-------|-----------|-------------|
+| 1. **Analyze** | `query/query_analyzer.py` | LLM classifies question complexity (simple, comparative, analytical, summary, multi-part) and decomposes into 1-4 sub-queries |
+| 2. **Hybrid Retrieve** | `retrieval/hybrid_searcher.py` | Per sub-query: vector search (Qdrant) + BM25 keyword search, merged via Reciprocal Rank Fusion |
+| 3. **Re-Rank** | `retrieval/reranker.py` | LLM scores all retrieved chunks for relevance in a single batch call, keeps top 8 |
+| 4. **Build Context** | `query/context_builder.py` | Deduplicate overlapping chunks, group by document, apply token budget, extract locations (Page/Slide/Sheet) |
+| 5. **Generate** | `query/answerer.py` | Dynamic system prompt (comparative/analytical/summary mode) + context + conversation history → Groq LLM |
+| 6. **Validate** | `query/validator.py` | Self-reflection: checks completeness, faithfulness, and quality. Regenerates if score < 6/10 |
+| 7. **Store Turn** | `query/conversation.py` | Saves Q&A turn to in-memory conversation history for multi-turn follow-ups |
 
 ### Sequence Diagram: Document Ingestion Pipeline
 
@@ -278,7 +279,8 @@ ai-service/
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py              # Pydantic settings (env vars, model config)
-│   └── qdrant_client.py         # Qdrant Cloud connection + collection setup
+│   ├── qdrant_client.py         # Qdrant Cloud connection + collection setup
+│   └── groq_client.py           # Singleton Groq LLM client
 │
 ├── pipelines/                   # File type → text extraction
 │   ├── __init__.py
@@ -296,9 +298,19 @@ ai-service/
 │   ├── chunker.py               # Token-based overlapping text chunking
 │   └── embedder.py              # HuggingFace embedding generation
 │
-├── query/                       # Question answering
+├── query/                       # 🧠 Enhanced RAG query pipeline
 │   ├── __init__.py
-│   └── answerer.py              # RAG: embed question → search → LLM answer
+│   ├── query_analyzer.py        # LLM-based question decomposition & classification
+│   ├── context_builder.py       # Dedup, grouping, token budget, location extraction
+│   ├── answerer.py              # 7-phase RAG orchestrator
+│   ├── conversation.py          # Multi-turn conversation memory (TTL-based)
+│   └── validator.py             # Answer self-reflection & regeneration
+│
+├── retrieval/                   # 🔍 Hybrid search & reranking
+│   ├── __init__.py
+│   ├── hybrid_searcher.py       # Vector + BM25 with Reciprocal Rank Fusion
+│   ├── bm25_index.py            # Cached per-user BM25 keyword index
+│   └── reranker.py              # LLM-based chunk relevance scoring
 │
 ├── routes/                      # FastAPI endpoints
 │   ├── __init__.py
@@ -308,7 +320,7 @@ ai-service/
 │
 ├── storage/                     # Vector database operations
 │   ├── __init__.py
-│   └── vector_store.py          # Qdrant upsert, search, delete operations
+│   └── vector_store.py          # Qdrant CRUD + scroll operations
 │
 ├── main.py                      # FastAPI app entry point
 ├── requirements.txt             # Python dependencies
@@ -368,32 +380,29 @@ Uses the official `huggingface_hub.InferenceClient` for reliable API calls:
 
 ---
 
-## 🔍 Query Pipeline
+## 🔍 Query Pipeline (Enhanced 7-Phase RAG)
 
 ### Question Answering (`query/answerer.py`)
 
-The answerer implements a full RAG pipeline:
+The answerer orchestrates a full 7-phase enhanced RAG pipeline:
 
-1. **Embed the question** using the same `BAAI/bge-m3` model
-2. **Search Qdrant** for top 5 most similar chunks (filtered by `user_id` for data isolation)
-3. **Build a system prompt** with retrieved context:
+1. **Analyze & Decompose** — Uses the LLM to classify question complexity (simple, comparative, analytical, summary, multi-part) and generates 1-4 focused sub-queries
+2. **Hybrid Retrieval** — Per sub-query: vector semantic search (Qdrant) + BM25 keyword search (cached index), merged via Reciprocal Rank Fusion (RRF)
+3. **Re-Rank** — All retrieved chunks scored by the LLM for relevance in a single batched call, keeping top 8
+4. **Build Context** — Deduplicates overlapping chunks (≥80% text overlap), groups by document, orders by chunk index, applies token budget (6000 tokens), and extracts human-readable locations (Page, Slide, Sheet)
+5. **Generate** — Dynamic system prompt selected by question type + context + conversation history → Groq LLM
+6. **Validate** — Self-reflection pass checking completeness, faithfulness, and quality. If score < 6/10, automatically regenerates
+7. **Store Turn** — Saves Q&A turn to TTL-based in-memory conversation memory for follow-up questions
 
-```
-You are a helpful document assistant. Answer the user's question
-based ONLY on the provided document excerpts. If the answer cannot
-be found in the documents, say so clearly.
+### Dynamic System Prompts
 
-=== DOCUMENT EXCERPTS ===
-[Source: report.pdf, Chunk 3]
-The quarterly revenue increased by 15% compared to...
-
-[Source: analysis.docx, Chunk 7]
-Key findings indicate that customer retention...
-===========================
-```
-
-4. **Call Groq LLM** (`llama-3.3-70b-versatile`) with the prompt
-5. **Return the answer** along with source citations (file name, chunk index, relevance score)
+| Question Type | Prompt Mode | Behavior |
+|---------------|-------------|----------|
+| `simple` | Base prompt | Direct factual answer |
+| `comparative` | Comparison prompt | Side-by-side table format |
+| `analytical` | Analysis prompt | Data points → patterns → conclusions |
+| `summary` | Summary prompt | Overview + bullet points + takeaways |
+| `multi_part` | Synthesis prompt | Unified answer combining multiple aspects |
 
 ### User Data Isolation
 
@@ -421,6 +430,7 @@ All vector searches are filtered by `user_id`, ensuring users can only query the
 | Groq SDK | 0.9.0 | LLM API client |
 | HuggingFace Hub | 1.8.0+ | Embedding API client |
 | Qdrant Client | 1.12.1 | Vector database client |
+| rank-bm25 | 0.2.2 | BM25 keyword search for hybrid retrieval |
 | pdfplumber | 0.11.0 | PDF text extraction |
 | python-docx | 1.1.0 | DOCX parsing |
 | python-pptx | 1.0.0 | PPTX parsing |
@@ -494,16 +504,22 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "answer": "According to the financial report, the quarterly revenue was $2.4M, representing a 15% increase compared to...",
+  "answer": "According to the financial report, the quarterly revenue was $2.4M, representing a 15% increase...",
   "sources": [
     {
-      "file_name": "Q3-Report.pdf",
+      "file": "Q3-Report.pdf",
       "file_id": "69df7533...",
+      "file_type": "pdf",
+      "snippet": "The quarterly revenue increased by 15% compared to...",
+      "score": 0.87,
       "chunk_index": 3,
-      "score": 0.87
+      "location": "Page 3-4"
     }
   ],
-  "chunks_found": 5
+  "chunks_found": 15,
+  "complexity": "simple",
+  "sub_queries_used": 1,
+  "validation_score": 8.5
 }
 ```
 
@@ -522,8 +538,8 @@ Content-Type: application/json
 | Component | Description |
 |-----------|-------------|
 | `AIStatusBadge.jsx` | Shows processing status (pending/processing/completed/failed) on file cards |
-| `ChatMessage.jsx` | Renders user and AI messages with markdown, copy button, and source citations |
-| `SourceCard.jsx` | Displays source citation with file type badge, relevance score, and expandable snippet |
+| `ChatMessage.jsx` | Renders AI messages with full markdown support (react-markdown + remark-gfm): tables, code blocks, lists, headings |
+| `SourceCard.jsx` | Displays source citation with file type badge, human-readable location (Page/Slide/Sheet), and expandable snippet |
 
 ### UI Features
 
@@ -547,12 +563,25 @@ Content-Type: application/json
 | `CHUNK_SIZE` | 400 | Tokens per chunk (~1,600 chars) |
 | `CHUNK_OVERLAP` | 100 | Token overlap between chunks (~400 chars) |
 
-### Search Parameters
+### Search & Retrieval Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| Top-K | 5 | Number of chunks to retrieve per query |
-| Score Threshold | 0.3 | Minimum similarity score (0-1) |
+| `INITIAL_RETRIEVAL_K` | 20 | Chunks to retrieve per sub-query before reranking |
+| `FINAL_CONTEXT_K` | 8 | Chunks to keep after reranking for context assembly |
+| `SCORE_THRESHOLD` | 0.15 | Minimum vector similarity score (0-1) |
+| `BM25_CACHE_TTL` | 300 | BM25 keyword index cache TTL in seconds |
+| `RERANK_ENABLED` | true | Enable/disable LLM-based reranking |
+
+### Answer Generation Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `MAX_TOKENS_SIMPLE` | 1024 | Max tokens for simple/factual answers |
+| `MAX_TOKENS_COMPLEX` | 3000 | Max tokens for comparative/analytical/summary answers |
+| `VALIDATOR_ENABLED` | true | Enable/disable answer self-reflection |
+| `CONVERSATION_MEMORY_SIZE` | 5 | Number of Q&A turns to remember per conversation |
+| `CONVERSATION_TTL` | 1800 | Conversation memory expiry in seconds (30 min) |
 
 ### Model Parameters
 
@@ -706,9 +735,11 @@ cd frontend && npm run dev
 ## 📊 Performance Notes
 
 - **Embedding latency:** ~0.5-1s per chunk (HuggingFace free tier)
-- **Query latency:** ~2-4s total (embed + search + LLM generation)
+- **Query latency:** ~3-6s total (analyze + hybrid search + rerank + generate + validate)
 - **Document processing:** ~10-30s depending on file size and chunk count
 - **Storage:** ~1KB per chunk in Qdrant (efficient for free 1GB tier)
+- **BM25 index build:** ~0.5-2s per user (cached with 5-min TTL)
+- **Groq client:** Singleton instance reused across all LLM calls
 - **Concurrent requests:** AI service handles multiple requests via FastAPI async
 
 ---

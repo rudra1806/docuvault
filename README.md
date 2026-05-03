@@ -134,18 +134,21 @@ The application is currently running in production on AWS:
 - **Structured JSON logs** — Easy parsing and analysis
 - **Error tracking** — Comprehensive error logging with stack traces
 
-### 🤖 AI-Powered Document Q&A (RAG)
+### 🤖 AI-Powered Document Q&A (Enhanced RAG)
 
 > 📖 **[Full AI Documentation →](./AI_RAG_DOCUMENTATION.md)** — Detailed architecture, pipeline breakdown, models, API reference, setup guide, and troubleshooting.
 
-- **Automatic document processing** — Uploaded files are extracted, chunked, embedded, and stored in a vector database
-- **Natural language queries** — Ask questions about your documents in plain English
-- **Source citations** — Every answer includes references to the exact document chunks used
+- **7-Phase Enhanced RAG Pipeline** — Query decomposition → Hybrid retrieval → Re-ranking → Context assembly → Dynamic generation → Validation → Memory
+- **Hybrid Search** — Combines vector semantic search (Qdrant) with BM25 keyword matching via Reciprocal Rank Fusion
+- **LLM Re-Ranking** — Groq-powered relevance scoring to surface the most relevant chunks
+- **Smart Context Assembly** — Deduplication, document grouping, token budget management, and location-based citations
+- **Dynamic Prompts** — Specialized system prompts for comparative, analytical, summary, and multi-part questions
+- **Answer Validation** — Self-reflection pass to catch hallucinations and regenerate low-quality answers
+- **Conversation Memory** — Multi-turn follow-up support with TTL-based in-memory history
+- **Source citations** — Human-readable locations (Page 3, Slide 2, Sheet: Sales) instead of raw scores
 - **Multi-format support** — PDFs, DOCX, spreadsheets, presentations, images, and more
-- **RAG pipeline** — Retrieval-Augmented Generation for accurate, grounded answers
 - **Per-user isolation** — Users can only query their own documents
-- **Real-time status** — Auto-polling tracks document processing status on file cards (updates every 5s)
-- **Chat interface** — Beautiful chat UI with markdown rendering and suggested questions
+- **Chat interface** — Full markdown rendering (tables, code blocks, lists) with react-markdown
 - **Powered by** — HuggingFace BGE-M3 embeddings, Groq Llama 3.3 70B LLM, Qdrant Cloud vector DB
 
 ### 🎨 User Interface
@@ -215,10 +218,12 @@ User → Amplify (HTTPS) → CloudFront (HTTPS) → Elastic Beanstalk (HTTP)
 → HuggingFace (embeddings) → Qdrant (vectors) → Webhook back to Backend
 ```
 
-**AI Query:**
+**AI Query (7-Phase Pipeline):**
 ```
-User → Amplify → CloudFront → Elastic Beanstalk → EC2 AI Service 
-→ HuggingFace (embed question) → Qdrant (search) → Groq (LLM) → Response
+User → Amplify → CloudFront → Elastic Beanstalk → EC2 AI Service
+→ Analyze & Decompose → Hybrid Search (Vector + BM25) → Re-Rank (LLM)
+→ Build Context (dedup, group, budget) → Generate Answer (Groq LLM)
+→ Validate (self-reflection) → Store Turn → Response
 ```
 
 ### 🎯 Architecture Decisions
@@ -275,7 +280,7 @@ sequenceDiagram
     Backend->>MongoDB: Update aiStatus: completed
 ```
 
-### 🔍 Sequence Diagram: AI Document Q&A (RAG)
+### 🔍 Sequence Diagram: AI Document Q&A (Enhanced 7-Phase RAG)
 
 ```mermaid
 sequenceDiagram
@@ -287,24 +292,47 @@ sequenceDiagram
     participant Qdrant as Qdrant Cloud
     participant Groq as Groq LLM<br/>(Llama 3.3 70B)
 
-    User->>Frontend: "What was the quarterly revenue?"
+    User->>Frontend: "Compare Q1 and Q2 sales"
     Frontend->>Backend: POST /api/ai/query { question, userId }
-    Backend->>AI: POST /query { question, user_id }
+    Backend->>AI: POST /query { question, user_id, conversation_id }
 
-    Note over AI,Qdrant: Step 1: Embed & Search
-    AI->>HF: Embed question → 1024-dim vector
-    HF-->>AI: Question embedding
-    AI->>Qdrant: Search top 5 similar chunks (filtered by user_id)
-    Qdrant-->>AI: Matched chunks + scores
+    Note over AI,Groq: Phase 1 — Query Analysis
+    AI->>Groq: Classify complexity & decompose into sub-queries
+    Groq-->>AI: { complexity: comparative, sub_queries: ["Q1 sales", "Q2 sales"] }
 
-    Note over AI,Groq: Step 2: Generate Answer
-    AI->>AI: Build prompt (question + retrieved chunks)
-    AI->>Groq: Chat completion (system prompt + context)
-    Groq-->>AI: Generated answer
+    Note over AI,Qdrant: Phase 2 — Hybrid Retrieval (per sub-query)
+    loop For each sub-query
+        AI->>HF: Embed sub-query → 1024-dim vector
+        HF-->>AI: Sub-query embedding
+        AI->>Qdrant: Vector search top 20 chunks (filtered by user_id)
+        Qdrant-->>AI: Semantic results
+        AI->>AI: BM25 keyword search (cached index)
+        AI->>AI: Reciprocal Rank Fusion (merge results)
+    end
 
-    AI-->>Backend: { answer, sources, chunks_found }
+    Note over AI,Groq: Phase 3 — Re-Rank
+    AI->>Groq: Score all chunks for relevance (single batch call)
+    Groq-->>AI: Top 8 most relevant chunks
+
+    Note over AI: Phase 4 — Context Assembly
+    AI->>AI: Deduplicate, group by document, apply token budget
+    AI->>AI: Extract locations (Page 3, Slide 2, Sheet: Sales)
+
+    Note over AI,Groq: Phase 5 — Generate Answer
+    AI->>Groq: Dynamic prompt (comparative mode) + context + history
+    Groq-->>AI: Generated answer with markdown formatting
+
+    Note over AI,Groq: Phase 6 — Validate
+    AI->>Groq: Self-reflection (completeness + faithfulness check)
+    Groq-->>AI: Score 8.5/10 ✅
+
+    Note over AI: Phase 7 — Store Turn
+    AI->>AI: Save to conversation memory for follow-ups
+
+    AI-->>Backend: { answer, sources, complexity, validation_score }
     Backend-->>Frontend: { answer, sources }
-    Frontend-->>User: Display answer + source citations 📄
+    Frontend->>Frontend: Render markdown (react-markdown + remark-gfm)
+    Frontend-->>User: Display answer + location-based citations 📄
 ```
 
 ---
@@ -338,8 +366,11 @@ sequenceDiagram
 | Groq SDK | 0.9.0 | Llama 3.3 70B LLM inference |
 | HuggingFace Hub | 1.8.0+ | BGE-M3 embedding generation |
 | Qdrant Client | 1.12.1 | Vector similarity search |
+| rank-bm25 | 0.2.2 | BM25 keyword search for hybrid retrieval |
 | pdfplumber | 0.11.0 | PDF text extraction |
 | python-docx | 1.1.0 | DOCX parsing |
+| react-markdown | 9.x | Frontend markdown rendering |
+| remark-gfm | 4.x | GitHub-flavored markdown (tables, etc.) |
 | Pydantic Settings | 2.4.0 | Configuration management |
 
 ### Cloud Services
@@ -372,7 +403,8 @@ DocuVault/
 ├── ai-service/                      # 🤖 AI RAG Microservice (FastAPI/Python)
 │   ├── config/
 │   │   ├── settings.py              # Pydantic settings (env vars, models)
-│   │   └── qdrant_client.py         # Qdrant Cloud connection + indexes
+│   │   ├── qdrant_client.py         # Qdrant Cloud connection + indexes
+│   │   └── groq_client.py           # Singleton Groq LLM client
 │   ├── pipelines/                   # File type → text extraction
 │   │   ├── router.py                # Routes files to correct pipeline
 │   │   ├── document.py              # PDF, DOCX, TXT extraction
@@ -385,14 +417,22 @@ DocuVault/
 │   │   ├── cleaner.py               # Text normalization
 │   │   ├── chunker.py               # Token-based overlapping chunking
 │   │   └── embedder.py              # HuggingFace BGE-M3 embeddings
-│   ├── query/
-│   │   └── answerer.py              # RAG: embed → search → LLM answer
+│   ├── query/                       # 🧠 Enhanced RAG query pipeline
+│   │   ├── query_analyzer.py        # LLM-based question decomposition
+│   │   ├── context_builder.py       # Dedup, grouping, token budget, location extraction
+│   │   ├── answerer.py              # 7-phase RAG orchestrator
+│   │   ├── conversation.py          # Multi-turn conversation memory (TTL-based)
+│   │   └── validator.py             # Answer self-reflection & regeneration
+│   ├── retrieval/                   # 🔍 Hybrid search & reranking
+│   │   ├── hybrid_searcher.py       # Vector + BM25 with Reciprocal Rank Fusion
+│   │   ├── bm25_index.py            # Cached per-user BM25 keyword index
+│   │   └── reranker.py              # LLM-based chunk relevance scoring
 │   ├── routes/
 │   │   ├── process.py               # POST /process endpoint
 │   │   ├── query.py                 # POST /query endpoint
 │   │   └── status.py                # Health & stats endpoints
 │   ├── storage/
-│   │   └── vector_store.py          # Qdrant CRUD operations
+│   │   └── vector_store.py          # Qdrant CRUD + scroll operations
 │   ├── main.py                      # FastAPI entry point
 │   ├── requirements.txt             # Python dependencies
 │   └── .env.example                 # AI service env template
@@ -508,7 +548,7 @@ DocuVault/
 | Method | Endpoint | Body | Description | Auth Required |
 |--------|----------|------|-------------|---------------|
 | POST | `/api/ai/process/:documentId` | - | Trigger AI processing for a document | ✅ |
-| POST | `/api/ai/query` | `{ question }` | Ask a question about your documents | ✅ |
+| POST | `/api/ai/query` | `{ question, conversation_id? }` | Ask a question (supports multi-turn follow-ups) | ✅ |
 | GET | `/api/ai/status/:fileId` | - | Get AI processing status | ✅ |
 | GET | `/api/ai/stats` | - | Get user's AI stats (chunk count) | ✅ |
 
@@ -885,6 +925,9 @@ To prevent **Mixed Content Errors** (where secure Amplify blocks insecure Beanst
 - **Optimized Queries** — Mongoose lean queries where appropriate
 - **Connection Pooling** — MongoDB connection reuse
 - **AI Batch Processing** — Embeddings generated in batches of 16 with rate limiting
+- **Groq Client Singleton** — Single reused LLM connection across all pipeline stages
+- **BM25 Index Caching** — Per-user keyword index with TTL, auto-invalidated on upload/delete
+- **Hybrid Retrieval** — RRF-based fusion avoids expensive cross-encoder models
 - **Vector Indexing** — Qdrant payload indexes for fast filtered searches
 
 ---
