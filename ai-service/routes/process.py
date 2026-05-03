@@ -15,6 +15,7 @@ from processing.cleaner import clean_text
 from processing.chunker import chunk_text
 from processing.embedder import embed_texts
 from storage.vector_store import upsert_chunks, delete_file_vectors
+from retrieval.bm25_index import invalidate_user_cache as invalidate_bm25_cache
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,9 @@ async def _process_file_task(
         }
 
         logger.info(f"[{file_id}] Processing complete: {count} chunks stored")
+
+        # Invalidate BM25 cache so next query uses fresh data
+        invalidate_bm25_cache(user_id)
 
         # Notify Node.js backend of completion
         await _notify_backend(settings, file_id, "completed", count)

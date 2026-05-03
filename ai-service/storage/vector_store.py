@@ -196,3 +196,58 @@ def get_user_stats(user_id: str) -> Dict:
     return {
         "total_chunks": count_result.count,
     }
+
+
+def scroll_user_chunks(user_id: str, max_chunks: int = 5000) -> List[Dict]:
+    """
+    Scroll all chunks for a user from Qdrant (without vectors).
+    Used by BM25 index builder.
+
+    Args:
+        user_id: Filter to this user's chunks
+        max_chunks: Maximum chunks to retrieve (safety limit)
+
+    Returns:
+        List of chunk dicts with text and metadata
+    """
+    settings = get_settings()
+    client = get_qdrant_client()
+
+    all_chunks = []
+    offset = None  # Start from the beginning
+
+    while len(all_chunks) < max_chunks:
+        results, next_offset = client.scroll(
+            collection_name=settings.QDRANT_COLLECTION,
+            scroll_filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="user_id",
+                        match=MatchValue(value=user_id),
+                    ),
+                ]
+            ),
+            limit=500,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        for point in results:
+            all_chunks.append({
+                "text": point.payload.get("chunk_text", ""),
+                "file_name": point.payload.get("file_name", ""),
+                "file_id": point.payload.get("file_id", ""),
+                "file_type": point.payload.get("file_type", ""),
+                "chunk_index": point.payload.get("chunk_index", 0),
+                "source": point.payload.get("source", ""),
+                "point_id": str(point.id),
+            })
+
+        if next_offset is None:
+            break  # No more results
+        offset = next_offset
+
+    logger.info(f"Scrolled {len(all_chunks)} chunks for user {user_id}")
+    return all_chunks
+

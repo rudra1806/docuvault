@@ -6,10 +6,12 @@
 # ============================================================
 
 import logging
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from routes.process import processing_status
 from storage.vector_store import delete_file_vectors, get_user_stats
+from retrieval.bm25_index import invalidate_user_cache as invalidate_bm25_cache
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ async def get_processing_status(file_id: str):
 
 class DeleteRequest(BaseModel):
     file_id: str
+    user_id: Optional[str] = None  # Optional: used to invalidate BM25 cache
 
 
 @router.post("/delete-vectors")
@@ -47,6 +50,10 @@ async def delete_vectors(request: DeleteRequest):
         # Clean up processing status
         if request.file_id in processing_status:
             del processing_status[request.file_id]
+
+        # Invalidate BM25 cache so next query doesn't return stale results
+        if request.user_id:
+            invalidate_bm25_cache(request.user_id)
 
         return {
             "success": True,

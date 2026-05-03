@@ -2,7 +2,7 @@
 # processing/embedder.py — HuggingFace Embedding API
 # ============================================================
 # Generates embeddings using HuggingFace InferenceClient
-# with the BGE-small-en-v1.5 model (384 dimensions).
+# with the BAAI/bge-m3 model (1024 dimensions).
 # ============================================================
 
 import logging

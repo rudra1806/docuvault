@@ -2,9 +2,12 @@
 // components/ChatMessage.jsx — Chat Message Bubble
 // ============================================================
 // Renders a single message (user or AI) in the chat interface.
+// Uses react-markdown for proper markdown rendering.
 // ============================================================
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import SourceCard from "./SourceCard";
 
 const ChatMessage = ({ message, onPreviewSource }) => {
@@ -20,23 +23,6 @@ const ChatMessage = ({ message, onPreviewSource }) => {
     } catch (err) {
       console.error("Copy failed:", err);
     }
-  };
-
-  // Simple markdown-like rendering for AI responses
-  const renderContent = (text) => {
-    if (isUser) return text;
-
-    // Bold text: **text**
-    let html = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    // Inline code: `code`
-    html = html.replace(
-      /`([^`]+)`/g,
-      '<code class="px-1.5 py-0.5 bg-surface-200 rounded text-primary-400 text-xs font-mono">$1</code>'
-    );
-    // Line breaks
-    html = html.replace(/\n/g, "<br />");
-
-    return <span dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   return (
@@ -72,7 +58,118 @@ const ChatMessage = ({ message, onPreviewSource }) => {
           }`}
         >
           <div className="text-sm leading-relaxed">
-            {renderContent(message.content)}
+            {isUser ? (
+              message.content
+            ) : message.loading ? null : (
+              <div className="prose-ai">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Headings
+                    h1: ({ children }) => (
+                      <h1 className="text-lg font-bold text-white mt-3 mb-2 first:mt-0">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-sm font-semibold text-muted-100 mt-2.5 mb-1 first:mt-0">{children}</h3>
+                    ),
+                    h4: ({ children }) => (
+                      <h4 className="text-sm font-semibold text-muted-200 mt-2 mb-1 first:mt-0">{children}</h4>
+                    ),
+                    // Paragraphs
+                    p: ({ children }) => (
+                      <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                    ),
+                    // Bold & italic
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-white">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic text-muted-200">{children}</em>
+                    ),
+                    // Lists
+                    ul: ({ children }) => (
+                      <ul className="list-disc list-inside mb-2 space-y-0.5 ml-1">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal list-inside mb-2 space-y-0.5 ml-1">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-muted-200 leading-relaxed">{children}</li>
+                    ),
+                    // Code
+                    code: ({ inline, children, ...props }) => {
+                      if (inline) {
+                        return (
+                          <code className="px-1.5 py-0.5 bg-surface-200 rounded text-primary-400 text-xs font-mono">
+                            {children}
+                          </code>
+                        );
+                      }
+                      return (
+                        <code
+                          className="block bg-surface-200/50 rounded-lg p-3 text-xs font-mono text-muted-200 overflow-x-auto my-2 border border-white/[0.06]"
+                          {...props}
+                        >
+                          {children}
+                        </code>
+                      );
+                    },
+                    pre: ({ children }) => (
+                      <pre className="bg-surface-200/50 rounded-lg p-3 text-xs font-mono text-muted-200 overflow-x-auto my-2 border border-white/[0.06]">
+                        {children}
+                      </pre>
+                    ),
+                    // Tables
+                    table: ({ children }) => (
+                      <div className="overflow-x-auto my-2 rounded-lg border border-white/[0.08]">
+                        <table className="w-full text-xs">{children}</table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-white/[0.04] border-b border-white/[0.08]">{children}</thead>
+                    ),
+                    tbody: ({ children }) => (
+                      <tbody className="divide-y divide-white/[0.04]">{children}</tbody>
+                    ),
+                    tr: ({ children }) => (
+                      <tr className="hover:bg-white/[0.02] transition-colors">{children}</tr>
+                    ),
+                    th: ({ children }) => (
+                      <th className="px-3 py-2 text-left text-muted-300 font-semibold">{children}</th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="px-3 py-2 text-muted-300">{children}</td>
+                    ),
+                    // Blockquotes
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-2 border-primary-500/40 pl-3 my-2 text-muted-300 italic">
+                        {children}
+                      </blockquote>
+                    ),
+                    // Horizontal rules
+                    hr: () => (
+                      <hr className="border-white/[0.08] my-3" />
+                    ),
+                    // Links
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-400 hover:text-primary-300 underline underline-offset-2"
+                      >
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
 
           {/* Loading indicator */}
